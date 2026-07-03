@@ -55,7 +55,7 @@ export const Sidebar = ({
     ? [...new Set(data.equipos.map(e => e['Agente Sophos']).filter(Boolean))].sort()
     : [];
   const usuarios = data
-    ? [...new Set(data.equipos.map(e => e['Usuario']).filter(Boolean))].sort()
+    ? [...new Set(data.equipos.map(e => (e['Cuenta NT'] || e['Usuario'])).filter(Boolean))].sort()
     : [];
 
   const handleFilterChange = (key: keyof Filtros, value: string) => {
@@ -153,9 +153,9 @@ export const Sidebar = ({
               </div>
 
               <div className="sidebar-filter-group">
-                <label>Usuario</label>
+                <label>Cuenta NT</label>
                 <select value={filtros.usuario} onChange={(e) => handleFilterChange('usuario', e.target.value)}>
-                  <option value="">Todos los usuarios</option>
+                  <option value="">Todas las cuentas NT</option>
                   {usuarios.slice(0, 200).map((u) => (
                     <option key={u} value={u}>{u}</option>
                   ))}

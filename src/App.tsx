@@ -212,6 +212,15 @@ function App() {
 
     await signOut();
     setData(null);
+    setFiltros({
+      region: '',
+      anio: '',
+      estadoIvanti: '',
+      estadoSophos: '',
+      usuario: ''
+    });
+    setAccessSession(null);
+    setProfile(null);
   };
 
   const filteredData = useMemo(() => {
@@ -221,7 +230,7 @@ function App() {
       if (regionLocked && e['Región'] !== regionLocked) return false;
       if (!regionLocked && filtros.region && e['Región'] !== filtros.region) return false;
       if (filtros.anio && e._anioReporte !== filtros.anio) return false;
-      if (filtros.usuario && e['Usuario'] !== filtros.usuario) return false;
+      if (filtros.usuario && (e['Cuenta NT'] || e['Usuario']) !== filtros.usuario) return false;
       if (filtros.estadoIvanti && e['Agente Ivanti'] !== filtros.estadoIvanti) return false;
       if (filtros.estadoSophos && e['Agente Sophos'] !== filtros.estadoSophos) return false;
       return true;
@@ -265,7 +274,7 @@ function App() {
         isRegionalReadOnly={effectiveRegionalReadOnly}
         userEmail={profile?.email || accessSession.accessKey}
         userRole={accessSession.scope === 'general_admin' ? profile?.role : 'region'}
-        onLogout={accessSession.scope === 'general_admin' ? handleLogout : undefined}
+        onLogout={handleLogout}
         canExport={accessSession.scope === 'general_admin'}
       />
       

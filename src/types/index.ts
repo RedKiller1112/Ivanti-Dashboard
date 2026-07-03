@@ -35,8 +35,11 @@ export interface EquipoConError {
 
 export interface EquipoNoReportado {
   nombreEquipo: string;
+  serie: string;
+  ip: string;
   region: string;
   usuario: string;
+  cuentaNT: string;
   ultimaConexion: string;
 }
 

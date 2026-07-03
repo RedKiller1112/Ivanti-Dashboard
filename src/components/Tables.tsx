@@ -29,13 +29,16 @@ export const Tables = ({ data }: TablesProps) => {
     return data.equiposNoReportados
       .filter(item =>
         item.nombreEquipo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.serie.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.ip.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.region.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.usuario.toLowerCase().includes(searchTerm.toLowerCase())
+        item.usuario.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.cuentaNT.toLowerCase().includes(searchTerm.toLowerCase())
       )
       .sort((a, b) => {
         const dir = sortDirection === 'asc' ? 1 : -1;
         if (sortBy === 'region') return normalize(a.region).localeCompare(normalize(b.region)) * dir;
-        if (sortBy === 'usuario') return normalize(a.usuario).localeCompare(normalize(b.usuario)) * dir;
+        if (sortBy === 'usuario') return normalize(a.cuentaNT).localeCompare(normalize(b.cuentaNT)) * dir;
         return normalize(a.nombreEquipo).localeCompare(normalize(b.nombreEquipo)) * dir;
       });
   }, [data.equiposNoReportados, searchTerm, sortBy, sortDirection]);
@@ -51,14 +54,16 @@ export const Tables = ({ data }: TablesProps) => {
     return data.equipos
       .filter(item =>
         item['Nombre de equipo'].toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item['Número de serie'].toLowerCase().includes(searchTerm.toLowerCase()) ||
         item['Región'].toLowerCase().includes(searchTerm.toLowerCase()) ||
         item['Usuario'].toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item['Cuenta NT'].toLowerCase().includes(searchTerm.toLowerCase()) ||
         item['Dirección IP'].toLowerCase().includes(searchTerm.toLowerCase())
       )
       .sort((a, b) => {
         const dir = sortDirection === 'asc' ? 1 : -1;
         if (sortBy === 'region') return normalize(a['Región']).localeCompare(normalize(b['Región'])) * dir;
-        if (sortBy === 'usuario') return normalize(a['Usuario']).localeCompare(normalize(b['Usuario'])) * dir;
+        if (sortBy === 'usuario') return normalize(a['Cuenta NT']).localeCompare(normalize(b['Cuenta NT'])) * dir;
         return normalize(a['Nombre de equipo']).localeCompare(normalize(b['Nombre de equipo'])) * dir;
       })
       .slice(0, 100);
@@ -71,20 +76,26 @@ export const Tables = ({ data }: TablesProps) => {
           <tr>
             <th onClick={() => toggleSort('nombre')} style={{ cursor: 'pointer' }}>Nombre Equipo</th>
             <th onClick={() => toggleSort('region')} style={{ cursor: 'pointer' }}>Región</th>
-            <th onClick={() => toggleSort('usuario')} style={{ cursor: 'pointer' }}>Usuario</th>
+            <th>Serie</th>
+            <th>IP</th>
+            <th onClick={() => toggleSort('usuario')} style={{ cursor: 'pointer' }}>Cuenta NT</th>
+            <th>Usuario</th>
             <th>Última Conexión</th>
           </tr>
         </thead>
         <tbody>
           {filteredNoReportados.length === 0 ? (
             <tr>
-              <td colSpan={4} className="no-data">No hay equipos no reportados</td>
+              <td colSpan={7} className="no-data">No hay equipos no reportados</td>
             </tr>
           ) : (
             filteredNoReportados.slice(0, 50).map((item, index) => (
               <tr key={index}>
                 <td>{item.nombreEquipo}</td>
                 <td>{item.region}</td>
+                <td>{item.serie}</td>
+                <td>{item.ip}</td>
+                <td>{item.cuentaNT}</td>
                 <td>{item.usuario}</td>
                 <td>{item.ultimaConexion}</td>
               </tr>
@@ -140,9 +151,11 @@ export const Tables = ({ data }: TablesProps) => {
         <thead>
           <tr>
             <th onClick={() => toggleSort('nombre')} style={{ cursor: 'pointer' }}>Nombre</th>
+            <th>Serie</th>
             <th>Tipo</th>
             <th onClick={() => toggleSort('region')} style={{ cursor: 'pointer' }}>Región</th>
-            <th onClick={() => toggleSort('usuario')} style={{ cursor: 'pointer' }}>Usuario</th>
+            <th onClick={() => toggleSort('usuario')} style={{ cursor: 'pointer' }}>Cuenta NT</th>
+            <th>Usuario</th>
             <th>Estado</th>
             <th>Agente Ivanti</th>
             <th>Agente Sophos</th>
@@ -154,8 +167,10 @@ export const Tables = ({ data }: TablesProps) => {
           {filteredGeneral.map((item, index) => (
             <tr key={index}>
               <td>{item['Nombre de equipo']}</td>
+              <td>{item['Número de serie']}</td>
               <td>{item['Tipo']}</td>
               <td>{item['Región']}</td>
+              <td>{item['Cuenta NT']}</td>
               <td>{item['Usuario']}</td>
               <td>
                 <span
