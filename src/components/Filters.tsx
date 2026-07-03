@@ -13,7 +13,7 @@ export const Filters = ({ filtros, onFiltrosChange, data }: FiltersProps) => {
   const anios = [...new Set(data.equipos.map(e => e._anioReporte).filter((x): x is string => !!x))].sort();
   const estadosIvanti = [...new Set(data.porIvanti.map(i => i.name))].sort();
   const estadosSophos = [...new Set(data.porSophos.map(s => s.name))].sort();
-  const usuarios = [...new Set(data.equipos.map(e => e['Usuario'] as string).filter((x): x is string => !!x))].sort();
+  const usuarios = [...new Set(data.equipos.map(e => (e['Cuenta NT'] || e['Usuario']) as string).filter((x): x is string => !!x))].sort();
   
   const handleChange = (campo: keyof Filtros, valor: string) => {
     onFiltrosChange({
@@ -103,12 +103,12 @@ export const Filters = ({ filtros, onFiltrosChange, data }: FiltersProps) => {
         </div>
         
         <div className="filter-group">
-          <label>Usuario</label>
+          <label>Cuenta NT</label>
           <select 
             value={filtros.usuario} 
             onChange={(e) => handleChange('usuario', e.target.value)}
           >
-            <option value="">Todos los usuarios</option>
+            <option value="">Todas las cuentas NT</option>
             {usuarios.slice(0, 100).map(u => (
               <option key={u} value={u}>{u}</option>
             ))}

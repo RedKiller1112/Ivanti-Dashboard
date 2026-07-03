@@ -288,8 +288,11 @@ export const procesarDatos = (equipos: Equipo[]): DataProcessed => {
       noReportados++;
       equiposNoReportados.push({
         nombreEquipo: equipo['Nombre de equipo'],
+        serie: equipo['Número de serie'],
+        ip: equipo['Dirección IP'],
         region: equipo['Región'],
         usuario: equipo['Usuario'],
+        cuentaNT: equipo['Cuenta NT'],
         ultimaConexion: equipo['Última actualización por el servidor de inventario']
       });
 
@@ -424,11 +427,14 @@ export const exportarAExcel = (data: DataProcessed): void => {
   if (data.equiposNoReportados.length > 0) {
     const noReportadosData = data.equiposNoReportados.map(e => [
       e.nombreEquipo,
+      e.serie,
+      e.ip,
       e.region,
       e.usuario,
+      e.cuentaNT,
       e.ultimaConexion
     ]);
-    noReportadosData.unshift(['Nombre Equipo', 'Región', 'Usuario', 'Última Conexión']);
+    noReportadosData.unshift(['Nombre Equipo', 'Serie', 'IP', 'Región', 'Usuario', 'Cuenta NT', 'Última Conexión']);
     const noReportadosSheet = XLSX.utils.aoa_to_sheet(noReportadosData);
     XLSX.utils.book_append_sheet(workbook, noReportadosSheet, 'No Reportados');
   }
@@ -449,14 +455,16 @@ export const exportarAExcel = (data: DataProcessed): void => {
   if (data.equipos.length > 0) {
     const detalleData = data.equipos.map(e => [
       e['Nombre de equipo'],
+      e['Número de serie'],
       e['Tipo'],
       e['Región'],
       e['Usuario'],
+      e['Cuenta NT'],
       e['Estatus'],
       e['Agente Ivanti'],
       e['Agente Sophos']
     ]);
-    detalleData.unshift(['Nombre', 'Tipo', 'Región', 'Usuario', 'Estado', 'Agente Ivanti', 'Agente Sophos']);
+    detalleData.unshift(['Nombre', 'Serie', 'Tipo', 'Región', 'Usuario', 'Cuenta NT', 'Estado', 'Agente Ivanti', 'Agente Sophos']);
     const detalleSheet = XLSX.utils.aoa_to_sheet(detalleData);
     XLSX.utils.book_append_sheet(workbook, detalleSheet, 'Detalle General');
   }
