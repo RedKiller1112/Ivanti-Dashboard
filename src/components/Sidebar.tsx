@@ -9,6 +9,7 @@ import {
   Filter
 } from 'lucide-react';
 import type { DataProcessed, Filtros } from '../types';
+import type { AppRole } from '../types/auth';
 
 interface SidebarProps {
   darkMode: boolean;
@@ -21,6 +22,10 @@ interface SidebarProps {
   onFiltrosChange: (filtros: Filtros) => void;
   data: DataProcessed | null;
   isRegionalReadOnly?: boolean;
+  userEmail?: string;
+  userRole?: AppRole;
+  onLogout?: () => Promise<void> | void;
+  canExport?: boolean;
 }
 
 export const Sidebar = ({
@@ -33,7 +38,9 @@ export const Sidebar = ({
   filtros,
   onFiltrosChange,
   data,
-  isRegionalReadOnly = false
+  isRegionalReadOnly = false,
+  onLogout,
+  canExport = true
 }: SidebarProps) => {
   const regiones = data
     ? [...new Set(data.equipos.map(e => e['Región']).filter(Boolean))].sort()
@@ -164,14 +171,33 @@ export const Sidebar = ({
 
           <div className="nav-section">
             <span className="nav-section-title">Opciones</span>
-            <button className="nav-item" onClick={onExportExcel}>
+            <button
+              className={`nav-item ${!canExport ? 'disabled' : ''}`}
+              onClick={onExportExcel}
+              disabled={!canExport}
+              title={!canExport ? 'Bloqueado para acceso regional' : 'Descargar Excel'}
+            >
               <FileSpreadsheet size={20} />
               <span>Descargar Excel</span>
             </button>
-            <button className="nav-item" onClick={onExportPDF}>
+            <button
+              className={`nav-item ${!canExport ? 'disabled' : ''}`}
+              onClick={onExportPDF}
+              disabled={!canExport}
+              title={!canExport ? 'Bloqueado para acceso regional' : 'Descargar PDF'}
+            >
               <Download size={20} />
               <span>Descargar PDF</span>
             </button>
+            {!canExport && (
+              <p className="export-locked-text">Exportación bloqueada para accesos regionales</p>
+            )}
+            {onLogout && (
+              <button className="nav-item" onClick={() => onLogout()}>
+                <X size={18} />
+                <span>Cerrar Sesión</span>
+              </button>
+            )}
           </div>
           
           <div className="nav-section">
@@ -184,10 +210,11 @@ export const Sidebar = ({
               <span>{darkMode ? 'Modo Claro' : 'Modo Oscuro'}</span>
             </button>
           </div>
+
         </nav>
         
         <div className="sidebar-footer">
-          <p>© 2024 Dashboard Ivanti</p>
+          <p>© 2024 Dashboard Ivanti · By Jordán Farías</p>
           <p>Versión 1.0.0</p>
         </div>
       </aside>

@@ -85,6 +85,21 @@ export const Charts = ({ data }: ChartsProps) => {
         </ResponsiveContainer>
       </div>
 
+      {/* No Reportados por Año */}
+      <div className="chart-card">
+        <h3 className="chart-title">Equipos No Reportados por Año</h3>
+        <ResponsiveContainer width="100%" height={250}>
+          <BarChart data={data.noReportadosPorAnio}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="name" />
+            <YAxis />
+            <Tooltip />
+            <Legend />
+            <Bar dataKey="value" fill="#EF4444" radius={[4, 4, 0, 0]} name="No reportados" />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
       {/* Estado de Sophos */}
       <div className="chart-card">
         <h3 className="chart-title">Estado del Agente Sophos</h3>

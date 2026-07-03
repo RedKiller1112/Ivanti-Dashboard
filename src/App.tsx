@@ -1,8 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Upload, KPICards, Charts, Tables, Sidebar } from './components';
+import { Upload, KPICards, Charts, Tables, Sidebar, Login } from './components';
 import { exportarAExcel, exportarAPDF, procesarDatos } from './services';
 import { slugifyRegion } from './constants/regions';
+import {
+  signOut,
+  getCurrentSession,
+  onAuthStateChange,
+  getMyProfile,
+  signInWithRegionPassword,
+  getAccessSession
+} from './services/authService';
 import type { DataProcessed, Filtros, Equipo } from './types';
+import type { AppAccessSession, UserProfile } from './types/auth';
 
 function App() {
   const [data, setData] = useState<DataProcessed | null>(null);
@@ -25,6 +34,10 @@ function App() {
   const isRegionalReadOnly = regionFromUrl.length > 0;
   
   const [loadingPublishedData, setLoadingPublishedData] = useState(true);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [accessSession, setAccessSession] = useState<AppAccessSession | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [authError, setAuthError] = useState('');
   const dashboardRef = useRef<HTMLDivElement>(null);
   
   const buildFromEquipos = (equipos: Equipo[]): DataProcessed => {
@@ -108,11 +121,105 @@ function App() {
     loadPublishedData();
   }, [isRegionalReadOnly, regionFromUrl]);
 
+  const roleRegionalReadOnly = accessSession?.scope === 'region';
+  const effectiveRegionalReadOnly = isRegionalReadOnly || roleRegionalReadOnly;
+
+  const roleRegion = roleRegionalReadOnly ? (accessSession?.region || '') : '';
+  const regionLocked = roleRegion || (isRegionalReadOnly ? regionFromUrl : '');
+
+  useEffect(() => {
+    let unsubscribe: (() => void) | null = null;
+
+    const initAuth = async () => {
+      try {
+        setAuthLoading(true);
+        const current = await getCurrentSession();
+        const localAccess = getAccessSession();
+        setAccessSession(localAccess);
+        if (current) {
+          const p = await getMyProfile();
+          setProfile(p);
+        }
+      } catch (err) {
+        setAuthError(err instanceof Error ? err.message : 'Error inicializando sesión.');
+        // Si Supabase no está configurado, no romper la app: mostrar login con error.
+        setProfile(null);
+      } finally {
+        setAuthLoading(false);
+      }
+
+      try {
+        const subscription = onAuthStateChange(async (nextSession) => {
+          if (nextSession) {
+            try {
+              const p = await getMyProfile();
+              setProfile(p);
+              setAuthError('');
+            } catch (err) {
+              setAuthError(err instanceof Error ? err.message : 'Error cargando perfil.');
+              setProfile(null);
+            }
+          } else {
+            setProfile(null);
+          }
+          setAccessSession(getAccessSession());
+        });
+
+        unsubscribe = () => {
+          subscription.unsubscribe();
+        };
+      } catch {
+        // Si falla registro de listener por falta de config, no bloquear render.
+      }
+    };
+
+    initAuth();
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (regionLocked) {
+      setFiltros((prev) => ({ ...prev, region: regionLocked }));
+    }
+  }, [regionLocked]);
+
+  const handleLogin = async (accessKey: string, password: string) => {
+    try {
+      setAuthLoading(true);
+      setAuthError('');
+      const nextAccess = await signInWithRegionPassword(accessKey, password);
+      setAccessSession(nextAccess);
+
+      setProfile(null);
+    } catch (err) {
+      setAuthError(err instanceof Error ? err.message : 'Credenciales inválidas.');
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    if (accessSession?.scope === 'general_admin') {
+      const confirmationKey = window.prompt('Para cerrar sesión ingresa la clave de confirmación:');
+      if (confirmationKey !== 'Minpu.2023!') {
+        alert('Clave incorrecta. No se cerró la sesión.');
+        return;
+      }
+    }
+
+    await signOut();
+    setData(null);
+  };
+
   const filteredData = useMemo(() => {
     if (!data) return null;
 
     const equiposFiltrados = data.equipos.filter((e) => {
-      if (filtros.region && e['Región'] !== filtros.region) return false;
+      if (regionLocked && e['Región'] !== regionLocked) return false;
+      if (!regionLocked && filtros.region && e['Región'] !== filtros.region) return false;
       if (filtros.anio && e._anioReporte !== filtros.anio) return false;
       if (filtros.usuario && e['Usuario'] !== filtros.usuario) return false;
       if (filtros.estadoIvanti && e['Agente Ivanti'] !== filtros.estadoIvanti) return false;
@@ -121,7 +228,27 @@ function App() {
     });
 
     return procesarDatos(equiposFiltrados);
-  }, [data, filtros]);
+  }, [data, filtros, regionLocked]);
+
+  if (authLoading) {
+    return (
+      <div className={`app ${darkMode ? 'dark-mode' : ''}`}>
+        <main className="main-content">
+          <div className="welcome-screen">
+            <div className="welcome-content">
+              <h1>Dashboard Ivanti</h1>
+              <p>Validando sesión...</p>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (!accessSession) {
+    return <Login onLogin={handleLogin} loading={authLoading} error={authError} />;
+  }
+
   
   return (
     <div className={`app ${darkMode ? 'dark-mode' : ''}`}>
@@ -135,7 +262,11 @@ function App() {
         filtros={filtros}
         onFiltrosChange={setFiltros}
         data={data}
-        isRegionalReadOnly={isRegionalReadOnly}
+        isRegionalReadOnly={effectiveRegionalReadOnly}
+        userEmail={profile?.email || accessSession.accessKey}
+        userRole={accessSession.scope === 'general_admin' ? profile?.role : 'region'}
+        onLogout={accessSession.scope === 'general_admin' ? handleLogout : undefined}
+        canExport={accessSession.scope === 'general_admin'}
       />
       
       <main className="main-content">
@@ -157,12 +288,17 @@ function App() {
         ) : (
           <div className="dashboard" id="dashboard-content" ref={dashboardRef}>
             <div className="dashboard-header">
-              <div>
+              <div className="dashboard-title-block">
                 <h1>Dashboard Ejecutivo - Inventario Ivanti</h1>
                 <p>Fecha de generación: {data.kpis.fechaGeneracion}</p>
               </div>
+              <div className="dashboard-branding">
+                <img src="/ministerio.svg" alt="Ministerio Público" className="brand-logo ministerio-logo" />
+                <img src="/fcom.png" alt="FCOM" className="brand-logo fcom-logo" />
+              </div>
             </div>
             
+
             <KPICards kpis={(filteredData || data).kpis} />
 
             <Charts data={filteredData || data} />

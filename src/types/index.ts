@@ -66,6 +66,7 @@ export interface DataProcessed {
   porRegion: { name: string; value: number }[];
   porEstado: { name: string; value: number }[];
   porAnio: { name: string; value: number }[];
+  noReportadosPorAnio: { name: string; value: number }[];
   porSophos: { name: string; value: number }[];
   porIvanti: { name: string; value: number }[];
   porTipo: { name: string; value: number }[];

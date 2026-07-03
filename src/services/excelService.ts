@@ -256,6 +256,7 @@ export const procesarDatos = (equipos: Equipo[]): DataProcessed => {
   // Arrays para gráficos
   const regionMap = new Map<string, number>();
   const anioMap = new Map<string, number>();
+  const noReportadosPorAnioMap = new Map<string, number>();
   const sophosMap = new Map<string, number>();
   const ivantiMap = new Map<string, number>();
   const tipoMap = new Map<string, number>();
@@ -291,6 +292,12 @@ export const procesarDatos = (equipos: Equipo[]): DataProcessed => {
         usuario: equipo['Usuario'],
         ultimaConexion: equipo['Última actualización por el servidor de inventario']
       });
+
+      const anioNoReportado = equipo._anioReporte || 'Sin año';
+      noReportadosPorAnioMap.set(
+        anioNoReportado,
+        (noReportadosPorAnioMap.get(anioNoReportado) || 0) + 1
+      );
     }
     
     // Verificar agente Ivanti
@@ -348,6 +355,10 @@ export const procesarDatos = (equipos: Equipo[]): DataProcessed => {
     .map(([name, value]) => ({ name, value }))
     .sort((a, b) => a.name.localeCompare(b.name));
   
+  const noReportadosPorAnio = Array.from(noReportadosPorAnioMap.entries())
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
   const porSophos = Array.from(sophosMap.entries())
     .map(([name, value]) => ({ name, value }))
     .sort((a, b) => b.value - a.value);
@@ -382,6 +393,7 @@ export const procesarDatos = (equipos: Equipo[]): DataProcessed => {
     porRegion,
     porEstado,
     porAnio,
+    noReportadosPorAnio,
     porSophos,
     porIvanti,
     porTipo,
