@@ -1,8 +1,8 @@
-# TODO - Publicación por Región (Opción A)
+# TODO - Ajustes UI Ciber + Bloqueo Export Regional
 
-- [ ] 1. Crear script de generación de JSON general y por región
-- [ ] 2. Crear constantes de regiones y slug
-- [ ] 3. Actualizar App.tsx para carga automática de JSON publicado
-- [ ] 4. Agregar comando npm `generate:data`
-- [ ] 5. Documentar flujo en MEJORAS.md
-- [ ] 6. Ejecutar generación de datos y build de verificación
+- [ ] 1. Copiar imágenes de branding a `dashboard-ivanti/public` (ministerio + fcom)
+- [ ] 2. Actualizar `Sidebar.tsx` para bloquear Descargar Excel/PDF en acceso regional
+- [ ] 3. Actualizar `App.tsx` para pasar permiso de exportación y branding en header
+- [ ] 4. Rediseñar `App.css` a estilo profesional futurista/ciberseguridad
+- [ ] 5. Ejecutar build y validar compilación
+- [ ] 6. Actualizar este TODO con estado final

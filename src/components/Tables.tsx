@@ -158,7 +158,15 @@ export const Tables = ({ data }: TablesProps) => {
               <td>{item['Región']}</td>
               <td>{item['Usuario']}</td>
               <td>
-                <span className={`status-badge ${item['Estatus'] === 'Reportado' ? 'reported' : 'not-reported'}`}>
+                <span
+                  className={`status-badge ${
+                    /no\s*reportado/i.test(item['Estatus'])
+                      ? 'not-reported'
+                      : /reportado|conectado/i.test(item['Estatus'])
+                        ? 'reported'
+                        : 'not-reported'
+                  }`}
+                >
                   {item['Estatus']}
                 </span>
               </td>
