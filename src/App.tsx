@@ -102,13 +102,15 @@ function App() {
           }
         }
 
-        const generalResponse = await fetch('/data/general.json', { cache: 'no-store' });
-        if (generalResponse.ok) {
-          const payload = await generalResponse.json();
-          const equipos = Array.isArray(payload?.equipos) ? payload.equipos : [];
-          if (equipos.length > 0) {
-            const processed = buildFromEquipos(equipos);
-            setData(processed);
+        if (accessSession?.scope !== 'general_admin') {
+          const generalResponse = await fetch('/data/general.json', { cache: 'no-store' });
+          if (generalResponse.ok) {
+            const payload = await generalResponse.json();
+            const equipos = Array.isArray(payload?.equipos) ? payload.equipos : [];
+            if (equipos.length > 0) {
+              const processed = buildFromEquipos(equipos);
+              setData(processed);
+            }
           }
         }
       } catch (error) {
@@ -119,12 +121,13 @@ function App() {
     };
 
     loadPublishedData();
-  }, [isRegionalReadOnly, regionFromUrl]);
+  }, [isRegionalReadOnly, regionFromUrl, accessSession?.scope]);
 
-  const roleRegionalReadOnly = accessSession?.scope === 'region';
+  const isServicioMda = accessSession?.scope === 'servicio_mda';
+  const roleRegionalReadOnly = accessSession?.scope === 'region' || isServicioMda;
   const effectiveRegionalReadOnly = isRegionalReadOnly || roleRegionalReadOnly;
 
-  const roleRegion = roleRegionalReadOnly ? (accessSession?.region || '') : '';
+  const roleRegion = accessSession?.scope === 'region' ? (accessSession?.region || '') : '';
   const regionLocked = roleRegion || (isRegionalReadOnly ? regionFromUrl : '');
 
   useEffect(() => {
@@ -202,7 +205,7 @@ function App() {
   };
 
   const handleLogout = async () => {
-    if (accessSession?.scope === 'general_admin') {
+    if (accessSession?.scope === 'general_admin' || accessSession?.scope === 'super_admin') {
       const confirmationKey = window.prompt('Para cerrar sesión ingresa la clave de confirmación:');
       if (confirmationKey !== 'Minpu.2023!') {
         alert('Clave incorrecta. No se cerró la sesión.');
@@ -273,9 +276,9 @@ function App() {
         data={data}
         isRegionalReadOnly={effectiveRegionalReadOnly}
         userEmail={profile?.email || accessSession.accessKey}
-        userRole={accessSession.scope === 'general_admin' ? profile?.role : 'region'}
+        userRole={accessSession.scope === 'general_admin' || accessSession.scope === 'super_admin' ? profile?.role : accessSession.role}
         onLogout={handleLogout}
-        canExport={accessSession.scope === 'general_admin'}
+        canExport={accessSession.scope === 'general_admin' || accessSession.scope === 'super_admin'}
       />
       
       <main className="main-content">
@@ -291,7 +294,10 @@ function App() {
             <div className="welcome-content">
               <h1>Dashboard Ivanti</h1>
               <p>Sube un archivo Excel para generar tu dashboard ejecutivo</p>
-              <Upload onDataLoaded={handleDataLoaded} />
+              <Upload
+                onDataLoaded={handleDataLoaded}
+                canUpload={accessSession?.scope === 'general_admin' || accessSession?.scope === 'super_admin'}
+              />
             </div>
           </div>
         ) : (
@@ -310,9 +316,9 @@ function App() {
 
             <KPICards kpis={(filteredData || data).kpis} />
 
-            <Charts data={filteredData || data} />
+            <Charts data={filteredData || data} hideRegionalSummaryCharts={isServicioMda} />
 
-            <Tables data={filteredData || data} />
+            <Tables data={filteredData || data} isServicioMda={isServicioMda} />
           </div>
         )}
       </main>

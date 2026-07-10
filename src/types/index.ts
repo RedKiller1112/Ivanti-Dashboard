@@ -24,11 +24,13 @@ export interface Equipo {
   'Fecha de la última sincronización de políticas': string;
   'Última actualización por el servidor de inventario': string;
   'Estatus': string;
+  noAtender?: boolean;
   _anioReporte: string;
 }
 
 export interface EquipoConError {
   equipo: string;
+  serie: string;
   mac: string;
   motivo: string;
 }

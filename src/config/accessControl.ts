@@ -1,4 +1,4 @@
-export type AccessScope = 'region' | 'general';
+export type AccessScope = 'region' | 'general' | 'servicio_mda' | 'super_admin';
 
 export interface AccessConfigItem {
   key: string;
@@ -33,7 +33,9 @@ export const ACCESS_CONFIG: AccessConfigItem[] = [
   { key: 'XV ARICA Y PARINACOTA', scope: 'region', region: 'XV Arica y Parinacota', passwordHash: '4d8a512a2bb09fc0235cd0f1fb43de7626f420e9034545033a9dc7c790138f2f' },
   { key: 'XVI NUBLE', scope: 'region', region: 'XVI Ñuble', passwordHash: 'a6e8d799e761f84ea58d83e3c6e44a6142d48c7664ac7898b9f606902c052931' },
   { key: 'SIN REGION', scope: 'region', region: 'Sin Región', passwordHash: '04283d01f09dc3e0f720161bf9b6f8d628b75ce7b5df6487b6a2ab28cb2065c1' },
-  { key: 'GENERAL', scope: 'general', region: null, passwordHash: '3e23052ed2ccbcb0e53adf909d1ddaa1068da9c92f46d35d785fd4805bd9bb01' }
+  { key: 'GENERAL', scope: 'general', region: null, passwordHash: '3e23052ed2ccbcb0e53adf909d1ddaa1068da9c92f46d35d785fd4805bd9bb01' },
+  { key: 'SERVICIOMDA', scope: 'servicio_mda', region: null, passwordHash: 'de33df470beccf5944cdf3fc60557d577fbdcbc2c7f616afc8de3568359170c1' },
+  { key: 'SUPERADMIN', scope: 'super_admin', region: null, passwordHash: '80c6e5a16a1fcf739fcb62290e4cec0b725a63e6928af7d05b47ca390ccc3143' }
 ];
 
 export const ACCESS_SESSION_KEY = 'ivanti_local_access_session';

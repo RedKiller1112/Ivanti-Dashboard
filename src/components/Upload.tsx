@@ -5,9 +5,10 @@ import type { DataProcessed } from '../types';
 
 interface UploadProps {
   onDataLoaded: (data: DataProcessed) => void;
+  canUpload: boolean;
 }
 
-export const Upload = ({ onDataLoaded }: UploadProps) => {
+export const Upload = ({ onDataLoaded, canUpload }: UploadProps) => {
   const [dragActive, setDragActive] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -17,6 +18,12 @@ export const Upload = ({ onDataLoaded }: UploadProps) => {
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
+
+    if (!canUpload) {
+      setDragActive(false);
+      return;
+    }
+
     if (e.type === 'dragenter' || e.type === 'dragover') {
       setDragActive(true);
     } else if (e.type === 'dragleave') {
@@ -27,25 +34,30 @@ export const Upload = ({ onDataLoaded }: UploadProps) => {
   const processFile = async (file: File) => {
     setError(null);
     setSuccess(false);
-    
+
+    if (!canUpload) {
+      setError('No autorizado: solo el usuario administrador general puede subir Excel.');
+      return;
+    }
+
     // Validar extensión
     const allowedExtensions = ['.xlsx', '.xls'];
     const fileName = file.name.toLowerCase();
-    const isValidExtension = allowedExtensions.some(ext => fileName.endsWith(ext));
-    
+    const isValidExtension = allowedExtensions.some((ext) => fileName.endsWith(ext));
+
     if (!isValidExtension) {
       setError('Solo se aceptan archivos .xlsx o .xls');
       return;
     }
-    
+
     // Validar nombre del archivo
     if (!validarNombreArchivo(file.name)) {
       setError('El nombre del archivo debe contener "Equipos en Ivanti"');
       return;
     }
-    
+
     setLoading(true);
-    
+
     try {
       const data = await leerArchivoExcel(file);
       setSuccess(true);
@@ -62,7 +74,12 @@ export const Upload = ({ onDataLoaded }: UploadProps) => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-    
+
+    if (!canUpload) {
+      setError('No autorizado: solo el usuario administrador general puede subir Excel.');
+      return;
+    }
+
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       processFile(e.dataTransfer.files[0]);
     }
@@ -70,6 +87,12 @@ export const Upload = ({ onDataLoaded }: UploadProps) => {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     e.preventDefault();
+
+    if (!canUpload) {
+      setError('No autorizado: solo el usuario administrador general puede subir Excel.');
+      return;
+    }
+
     if (e.target.files && e.target.files[0]) {
       processFile(e.target.files[0]);
     }
@@ -91,9 +114,9 @@ export const Upload = ({ onDataLoaded }: UploadProps) => {
           className="upload-input"
           accept=".xlsx,.xls"
           onChange={handleChange}
-          disabled={loading}
+          disabled={loading || !canUpload}
         />
-        
+
         {loading ? (
           <div className="upload-loading">
             <div className="spinner"></div>
@@ -108,15 +131,16 @@ export const Upload = ({ onDataLoaded }: UploadProps) => {
           <div className="upload-content">
             <UploadIcon size={48} />
             <p className="upload-title">Cargar archivo Excel</p>
-            <p className="upload-text">
-              Arrastra y suelta o haz clic para seleccionar
-            </p>
-            <p className="upload-hint">
-              El archivo debe llamarse "Equipos en Ivanti.xlsx"
-            </p>
+            <p className="upload-text">Arrastra y suelta o haz clic para seleccionar</p>
+            <p className="upload-hint">El archivo debe llamarse "Equipos en Ivanti.xlsx"</p>
+            {!canUpload && (
+              <p className="upload-hint" style={{ color: '#b91c1c', fontWeight: 600 }}>
+                Solo el usuario autorizado (GENERAL) puede subir información.
+              </p>
+            )}
           </div>
         )}
-        
+
         {error && (
           <div className="upload-error">
             <AlertCircle size={16} />

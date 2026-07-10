@@ -4,11 +4,23 @@ import type { DataProcessed } from '../types';
 
 interface TablesProps {
   data: DataProcessed;
+  isServicioMda?: boolean;
 }
 
 type TableType = 'noReportados' | 'incorrectos' | 'general';
 
-export const Tables = ({ data }: TablesProps) => {
+const FALLBACK_NO_ATENDER_SERIES_UI = new Set([
+  'mj0lb5xt','mj0lb5xv','mj0kq9ww','mj0lb5xs','mj0jmp84','mj0jmp4y','mj0lathw','mj0lb5xw',
+  'mj0jmyez','mj0lb5xk','mj0jmqg7','mj0jmqcd','mj0jmp1w','mj0jn449','mj0jm0ef','mj0lb5xy',
+  'mj0jm03y','mj0jmprj','mj0jltcm','mj0lb5xq','mj0jmp1b','mj0jmpln','mj0jmp4x','mj0jm035',
+  'mj0jlzgd','mj0jmplf','mj0jlzw5','mj0jlvwy','mj0kq9wp','mj0jmqjt','mj0jmp8p','mj0lb5xr',
+  'mj0kq9ws','mj0lal5x','mj0lb5y3','mj0jlzzw','mj0lb5y4','mj0lb5y2','mj0laths','mj0lb5xp',
+  'mj0jlt7h','mj0kq9vd','mj0jm088','mj0jmp8g','mj0lcwya','mj0lb5xz','mj0lb5xl','mj0lal5y',
+  'mj0jmcs3','mj0jmqg3','mj0jm0cl','mj0jmqen','mj0jmp09','mj0kq9vq','mj0kq9wd','mj0lb5xm',
+  'mj0jmpps','mj0jlvrh','mj0jmp1g','mj0jlt81','mj0jmp1n','mj0jmqgr'
+]);
+
+export const Tables = ({ data, isServicioMda = false }: TablesProps) => {
   const [activeTable, setActiveTable] = useState<TableType>('noReportados');
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'nombre' | 'region' | 'usuario'>('nombre');
@@ -46,6 +58,7 @@ export const Tables = ({ data }: TablesProps) => {
   const filteredIncorrectos = useMemo(() => {
     return data.equiposConError.filter(item =>
       item.equipo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.serie.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.mac.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [data.equiposConError, searchTerm]);
@@ -55,19 +68,40 @@ export const Tables = ({ data }: TablesProps) => {
       .filter(item =>
         item['Nombre de equipo'].toLowerCase().includes(searchTerm.toLowerCase()) ||
         item['Número de serie'].toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item['Región'].toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item['Usuario'].toLowerCase().includes(searchTerm.toLowerCase()) ||
         item['Cuenta NT'].toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item['Dirección IP'].toLowerCase().includes(searchTerm.toLowerCase())
+        item['Usuario'].toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item['Dirección IP'].toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item['Última actualización por el servidor de inventario'].toLowerCase().includes(searchTerm.toLowerCase())
       )
       .sort((a, b) => {
         const dir = sortDirection === 'asc' ? 1 : -1;
         if (sortBy === 'region') return normalize(a['Región']).localeCompare(normalize(b['Región'])) * dir;
         if (sortBy === 'usuario') return normalize(a['Cuenta NT']).localeCompare(normalize(b['Cuenta NT'])) * dir;
         return normalize(a['Nombre de equipo']).localeCompare(normalize(b['Nombre de equipo'])) * dir;
-      })
-      .slice(0, 100);
+      });
   }, [data.equipos, searchTerm, sortBy, sortDirection]);
+
+  const hasNoAtenderMatch = useMemo(() => {
+    if (!isServicioMda) return false;
+    if (!searchTerm.trim()) return false;
+
+    const normalizedSearch = searchTerm.toLowerCase().trim();
+
+    return data.equipos.some((item) => {
+      const matchSearch =
+        item['Nombre de equipo'].toLowerCase().includes(normalizedSearch) ||
+        item['Número de serie'].toLowerCase().includes(normalizedSearch) ||
+        item['Cuenta NT'].toLowerCase().includes(normalizedSearch) ||
+        item['Usuario'].toLowerCase().includes(normalizedSearch) ||
+        item['Dirección IP'].toLowerCase().includes(normalizedSearch) ||
+        item['Última actualización por el servidor de inventario'].toLowerCase().includes(normalizedSearch);
+
+      const serieNorm = item['Número de serie'].toLowerCase().replace(/\s+/g, '');
+      const noAtenderByUiFallback = FALLBACK_NO_ATENDER_SERIES_UI.has(serieNorm);
+
+      return matchSearch && (Boolean(item.noAtender) || noAtenderByUiFallback);
+    });
+  }, [data.equipos, isServicioMda, searchTerm]);
   
   const renderNoReportadosTable = () => (
     <div className="table-wrapper">
@@ -117,6 +151,7 @@ export const Tables = ({ data }: TablesProps) => {
         <thead>
           <tr>
             <th>Equipo</th>
+            <th>Serie</th>
             <th>MAC</th>
             <th>Motivo del Error</th>
           </tr>
@@ -124,12 +159,13 @@ export const Tables = ({ data }: TablesProps) => {
         <tbody>
           {filteredIncorrectos.length === 0 ? (
             <tr>
-              <td colSpan={3} className="no-data">No hay equipos con nombres incorrectos</td>
+              <td colSpan={4} className="no-data">No hay equipos con nombres incorrectos</td>
             </tr>
           ) : (
             filteredIncorrectos.slice(0, 50).map((item, index) => (
               <tr key={index}>
                 <td>{item.equipo}</td>
+                <td>{item.serie}</td>
                 <td>{item.mac}</td>
                 <td className="error-text">{item.motivo}</td>
               </tr>
@@ -147,6 +183,18 @@ export const Tables = ({ data }: TablesProps) => {
   
   const renderGeneralTable = () => (
     <div className="table-wrapper">
+      {isServicioMda && (
+        <div
+          className={hasNoAtenderMatch ? 'upload-error' : 'upload-success'}
+          style={{ margin: '0 0 12px 0' }}
+        >
+          <span style={{ fontWeight: 700 }}>
+            {hasNoAtenderMatch
+              ? 'USUARIO NO DEBE SER ATENDIDO, por favor consultar su estado.'
+              : 'sin alerta de no atender para los resultados actuales'}
+          </span>
+        </div>
+      )}
       <table className="data-table">
         <thead>
           <tr>
@@ -164,7 +212,7 @@ export const Tables = ({ data }: TablesProps) => {
           </tr>
         </thead>
         <tbody>
-          {filteredGeneral.map((item, index) => (
+          {(isServicioMda ? filteredGeneral : filteredGeneral.slice(0, 100)).map((item, index) => (
             <tr key={index}>
               <td>{item['Nombre de equipo']}</td>
               <td>{item['Número de serie']}</td>
@@ -193,9 +241,11 @@ export const Tables = ({ data }: TablesProps) => {
           ))}
         </tbody>
       </table>
-      <div className="table-footer">
-        Mostrando 100 de {data.equipos.length} registros
-      </div>
+      {!isServicioMda && (
+        <div className="table-footer">
+          Mostrando 100 de {data.equipos.length} registros
+        </div>
+      )}
     </div>
   );
   
@@ -227,7 +277,7 @@ export const Tables = ({ data }: TablesProps) => {
           <Search size={16} />
           <input
             type="text"
-            placeholder="Buscar..."
+            placeholder={isServicioMda ? 'Buscar usuario/equipo, serie o IP...' : 'Buscar...'}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
