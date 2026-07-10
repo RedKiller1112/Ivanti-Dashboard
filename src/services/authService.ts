@@ -48,9 +48,23 @@ export const signInWithRegionPassword = async (
     throw new Error('Contraseña incorrecta.');
   }
 
+  const scopeMap: Record<string, AppAccessSession['scope']> = {
+    general: 'general_admin',
+    region: 'region',
+    servicio_mda: 'servicio_mda',
+    super_admin: 'super_admin'
+  };
+
+  const roleMap: Record<string, AppAccessSession['role']> = {
+    general: 'admin',
+    region: 'region',
+    servicio_mda: 'servicio_mda',
+    super_admin: 'super_admin'
+  };
+
   const session: AppAccessSession = {
-    scope: config.scope === 'general' ? 'general_admin' : 'region',
-    role: config.scope === 'general' ? 'admin' : 'region',
+    scope: scopeMap[config.scope] || 'region',
+    role: roleMap[config.scope] || 'region',
     region: config.region,
     accessKey: config.key,
     loggedAt: new Date().toISOString()

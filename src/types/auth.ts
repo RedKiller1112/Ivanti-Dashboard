@@ -1,4 +1,4 @@
-export type AppRole = 'admin' | 'general' | 'region';
+export type AppRole = 'admin' | 'general' | 'region' | 'servicio_mda' | 'super_admin';
 
 export interface UserProfile {
   id: string;
@@ -9,7 +9,7 @@ export interface UserProfile {
   active: boolean;
 }
 
-export type AccessScope = 'region' | 'general_admin';
+export type AccessScope = 'region' | 'general_admin' | 'servicio_mda' | 'super_admin';
 
 export interface AppAccessSession {
   scope: AccessScope;

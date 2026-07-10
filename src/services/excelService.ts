@@ -7,7 +7,17 @@ import type { Equipo, EquipoConError, EquipoNoReportado, KPIs, DataProcessed, Ra
 
 // Validar que el nombre del archivo contenga "Equipos en Ivanti"
 export const validarNombreArchivo = (nombreArchivo: string): boolean => {
-  return nombreArchivo.toLowerCase().includes('equipos en ivanti');
+  const normalized = nombreArchivo
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\.(xlsx|xls)$/i, '')
+    .trim();
+
+  const hasEquipos = normalized.includes('equipos');
+  const hasIvanti = normalized.includes('ivanti');
+
+  return hasEquipos && hasIvanti;
 };
 
 // Helpers de normalización
@@ -108,26 +118,46 @@ const normalizeIP = (value: unknown): string => {
   return raw;
 };
 
+const FALLBACK_NO_ATENDER_SERIES = new Set([
+  'mj0lb5xt','mj0lb5xv','mj0kq9ww','mj0lb5xs','mj0jmp84','mj0jmp4y','mj0lathw','mj0lb5xw',
+  'mj0jmyez','mj0lb5xk','mj0jmqg7','mj0jmqcd','mj0jmp1w','mj0jn449','mj0jm0ef','mj0lb5xy',
+  'mj0jm03y','mj0jmprj','mj0jltcm','mj0lb5xq','mj0jmp1b','mj0jmpln','mj0jmp4x','mj0jm035',
+  'mj0jlzgd','mj0jmplf','mj0jlzw5','mj0jlvwy','mj0kq9wp','mj0jmqjt','mj0jmp8p','mj0lb5xr',
+  'mj0kq9ws','mj0lal5x','mj0lb5y3','mj0jlzzw','mj0lb5y4','mj0lb5y2','mj0laths','mj0lb5xp',
+  'mj0jlt7h','mj0kq9vd','mj0jm088','mj0jmp8g','mj0lcwya','mj0lb5xz','mj0lb5xl','mj0lal5y',
+  'mj0jmcs3','mj0jmqg3','mj0jm0cl','mj0jmqen','mj0jmp09','mj0kq9vq','mj0kq9wd','mj0lb5xm',
+  'mj0jmpps','mj0jlvrh','mj0jmp1g','mj0jlt81','mj0jmp1n','mj0jmqgr'
+].map((s) => s.replace(/\s+/g, '').toLowerCase()));
+
 const COLUMN_ALIASES: Record<string, string[]> = {
-  nombreEquipo: ['nombre de equipo', 'equipo', 'nombre equipo'],
-  tipo: ['tipo'],
-  modelo: ['modelo'],
-  numeroSerie: ['número de serie', 'numero de serie', 'serial'],
-  direccionIP: ['dirección ip', 'direccion ip', 'ip'],
-  direccionMAC: ['dirección mac', 'direccion mac', 'mac'],
-  region: ['región', 'region'],
-  fiscalia: ['fiscalía', 'fiscalia'],
-  nombreSO: ['nombre de so', 'sistema operativo', 'so'],
-  versionSO: ['versión de so', 'version de so'],
-  revisionSO: ['revisión de so', 'revision de so'],
-  usuario: ['usuario', 'user'],
-  cuentaNT: ['cuenta nt'],
-  agenteSophos: ['agente sophos', 'sophos'],
-  agenteIvanti: ['agente ivanti', 'ivanti'],
-  fechaCreacion: ['fecha de creación del registro', 'fecha de creacion del registro'],
-  fechaSyncPoliticas: ['fecha de la última sincronización de políticas', 'fecha de la ultima sincronizacion de politicas'],
-  ultimaActualizacion: ['última actualización por el servidor de inventario', 'ultima actualizacion por el servidor de inventario', 'último reporte', 'ultimo reporte'],
-  estatus: ['estatus', 'estado del equipo', 'estado']
+  nombreEquipo: ['nombre de equipo', 'equipo', 'nombre equipo', 'hostname', 'device name'],
+  tipo: ['tipo', 'tipo de equipo', 'category'],
+  modelo: ['modelo', 'model'],
+  numeroSerie: ['número de serie', 'numero de serie', 'serial', 'serial number'],
+  direccionIP: ['dirección ip', 'direccion ip', 'ip', 'ip address'],
+  direccionMAC: ['dirección mac', 'direccion mac', 'mac', 'mac address'],
+  region: ['región', 'region', 'zona'],
+  fiscalia: ['fiscalía', 'fiscalia', 'fiscalia/unidad', 'unidad'],
+  nombreSO: ['nombre de so', 'sistema operativo', 'so', 'os name'],
+  versionSO: ['versión de so', 'version de so', 'version so', 'os version'],
+  revisionSO: ['revisión de so', 'revision de so', 'build so', 'os build'],
+  usuario: ['usuario', 'user', 'usuario actual', 'last logged on user'],
+  cuentaNT: ['cuenta nt', 'cuenta', 'nt account', 'account'],
+  agenteSophos: ['agente sophos', 'sophos', 'sophos agent'],
+  agenteIvanti: ['agente ivanti', 'ivanti', 'ivanti agent'],
+  fechaCreacion: ['fecha de creación del registro', 'fecha de creacion del registro', 'fecha creacion'],
+  fechaSyncPoliticas: ['fecha de la última sincronización de políticas', 'fecha de la ultima sincronizacion de politicas', 'ultima sincronizacion politicas'],
+  ultimaActualizacion: [
+    'última actualización por el servidor de inventario',
+    'ultima actualizacion por el servidor de inventario',
+    'último reporte',
+    'ultimo reporte',
+    'ultima conexion',
+    'last seen',
+    'last report'
+  ],
+  estatus: ['estatus', 'estado del equipo', 'estado', 'status'],
+  atencion: ['atención', 'atencion', 'atender', 'estado atencion', 'accion atencion']
 };
 
 const resolveColumn = (headers: string[], aliases: string[]): string | undefined => {
@@ -145,7 +175,92 @@ const resolveColumn = (headers: string[], aliases: string[]): string | undefined
   return undefined;
 };
 
-const mapRawRowToEquipo = (row: RawExcelRow, headers: string[]): Equipo => {
+const isRedLikeColor = (rgb: string): boolean => {
+  const hex = rgb.replace(/^FF/i, '').toUpperCase();
+  if (hex.length !== 6) return false;
+  const r = parseInt(hex.slice(0, 2), 16);
+  const g = parseInt(hex.slice(2, 4), 16);
+  const b = parseInt(hex.slice(4, 6), 16);
+  return r >= 160 && g <= 120 && b <= 120;
+};
+
+const getStyleColorHex = (
+  cell: (XLSX.CellObject & { s?: { fgColor?: { rgb?: string }; bgColor?: { rgb?: string }; fill?: { fgColor?: { rgb?: string }; bgColor?: { rgb?: string } } } }) | undefined
+): string[] => {
+  const colors: string[] = [];
+  const candidates = [
+    cell?.s?.fgColor?.rgb,
+    cell?.s?.bgColor?.rgb,
+    cell?.s?.fill?.fgColor?.rgb,
+    cell?.s?.fill?.bgColor?.rgb
+  ];
+  candidates.forEach((c) => {
+    if (c && typeof c === 'string') colors.push(c);
+  });
+  return colors;
+};
+
+const getRowNoAtenderFromStyle = (worksheet: XLSX.WorkSheet, rowNumber: number, headers: string[]): boolean => {
+  const cellsToInspect: string[] = [];
+  const maxCols = Math.max(headers.length || 0, 40);
+  for (let c = 0; c < maxCols; c++) {
+    cellsToInspect.push(XLSX.utils.encode_cell({ r: rowNumber, c }));
+  }
+
+  return cellsToInspect.some((ref) => {
+    const cell = worksheet[ref] as (XLSX.CellObject & {
+      s?: {
+        fgColor?: { rgb?: string };
+        bgColor?: { rgb?: string };
+        fill?: { fgColor?: { rgb?: string }; bgColor?: { rgb?: string } };
+      };
+    }) | undefined;
+    const colors = getStyleColorHex(cell);
+    return colors.some(isRedLikeColor);
+  });
+};
+
+const getRowNoAtenderFromText = (row: RawExcelRow): boolean => {
+  const values = Object.values(row).map((v) => normalizeText(v));
+  return values.some((v) =>
+    v.includes('no atender') ||
+    v.includes('no-atender') ||
+    v.includes('noatender') ||
+    v.includes('no se atiende') ||
+    v.includes('no se atienda') ||
+    v.includes('no debe ser atendido') ||
+    v.includes('no atender usuario') ||
+    v === 'na' ||
+    v === 'n/a'
+  );
+};
+
+const isNoAtenderValue = (value: string): boolean => {
+  const v = normalizeText(value);
+  if (!v) return false;
+  return (
+    v.includes('no atender') ||
+    v.includes('no-atender') ||
+    v.includes('noatender') ||
+    v.includes('no se atiende') ||
+    v.includes('no se atienda') ||
+    v.includes('no debe ser atendido')
+  );
+};
+
+const getRowNoAtenderFromAtencionColumn = (row: RawExcelRow, headers: string[]): boolean => {
+  const col = resolveColumn(headers, COLUMN_ALIASES.atencion || []);
+  if (!col) return false;
+  const value = String(row[col] ?? '');
+  return isNoAtenderValue(value);
+};
+
+const mapRawRowToEquipo = (
+  row: RawExcelRow,
+  headers: string[],
+  noAtender = false,
+  forcedAtencionValue = ''
+): Equipo => {
   const pick = (key: keyof typeof COLUMN_ALIASES): string => {
     const col = resolveColumn(headers, COLUMN_ALIASES[key]);
     return String((col ? row[col] : '') ?? '').trim();
@@ -153,6 +268,18 @@ const mapRawRowToEquipo = (row: RawExcelRow, headers: string[]): Equipo => {
 
   const ultimaActualizacion = normalizeDate(pick('ultimaActualizacion'));
   const region = normalizeRegion(pick('region'));
+  const atencionRaw = forcedAtencionValue || pick('atencion');
+  const atencion = normalizeText(atencionRaw);
+  const noAtenderByColumn =
+    atencion.includes('no atender') ||
+    atencion.includes('no-atender') ||
+    atencion.includes('noatender') ||
+    atencion.includes('no atender usuario') ||
+    atencion === 'na' ||
+    atencion === 'n/a';
+
+  const serieNorm = normalizeText(pick('numeroSerie')).replace(/\s+/g, '');
+  const noAtenderByFallbackList = FALLBACK_NO_ATENDER_SERIES.has(serieNorm);
 
   return {
     'Nombre de equipo': pick('nombreEquipo'),
@@ -174,6 +301,7 @@ const mapRawRowToEquipo = (row: RawExcelRow, headers: string[]): Equipo => {
     'Fecha de la última sincronización de políticas': normalizeDate(pick('fechaSyncPoliticas')),
     'Última actualización por el servidor de inventario': ultimaActualizacion,
     'Estatus': pick('estatus') || 'Desconocido',
+    noAtender: noAtender || noAtenderByColumn || noAtenderByFallbackList,
     _anioReporte: toYearFromDateString(ultimaActualizacion)
   };
 };
@@ -186,20 +314,51 @@ export const leerArchivoExcel = (file: File): Promise<DataProcessed> => {
     reader.onload = (e) => {
       try {
         const data = new Uint8Array(e.target?.result as ArrayBuffer);
-        const workbook = XLSX.read(data, { type: 'array' });
+        const workbook = XLSX.read(data, { type: 'array', cellStyles: true });
 
         const firstSheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[firstSheetName];
 
-        const rawData = XLSX.utils.sheet_to_json<RawExcelRow>(worksheet, { defval: '' });
+        let rawData = XLSX.utils.sheet_to_json<RawExcelRow>(worksheet, { defval: '' });
 
         if (rawData.length === 0) {
           reject(new Error('El archivo está vacío'));
           return;
         }
 
-        const headers = Object.keys(rawData[0] || {});
-        const normalizedData: Equipo[] = rawData.map(row => mapRawRowToEquipo(row, headers));
+        let headers = Object.keys(rawData[0] || {});
+
+        const hasKnownHeaders = Object.values(COLUMN_ALIASES)
+          .flat()
+          .some(alias => headers.some(h => normalizeText(h).includes(normalizeText(alias))));
+
+        if (!hasKnownHeaders) {
+          rawData = XLSX.utils.sheet_to_json<RawExcelRow>(worksheet, { defval: '', range: 1 });
+          if (rawData.length > 0) {
+            headers = Object.keys(rawData[0] || {});
+          }
+        }
+
+        const atencionHeader = resolveColumn(headers, COLUMN_ALIASES.atencion || []);
+        let lastAtencionValue = '';
+
+        const normalizedData: Equipo[] = rawData.map((row, index) => {
+          const rowOffset = hasKnownHeaders ? 1 : 2;
+          const rowNumber = index + rowOffset;
+          const byStyle = getRowNoAtenderFromStyle(worksheet, rowNumber, headers);
+          const byText = getRowNoAtenderFromText(row);
+
+          const currentAtencion = atencionHeader ? normalizeText(row[atencionHeader]) : '';
+          if (currentAtencion) {
+            lastAtencionValue = currentAtencion;
+          }
+
+          const inheritedAtencion = currentAtencion || lastAtencionValue;
+          const byAtencionColumn = isNoAtenderValue(inheritedAtencion);
+
+          const noAtender = byStyle || byText || byAtencionColumn;
+          return mapRawRowToEquipo(row, headers, noAtender, inheritedAtencion);
+        });
 
         const processedData = procesarDatos(normalizedData);
         resolve(processedData);
@@ -269,6 +428,7 @@ export const procesarDatos = (equipos: Equipo[]): DataProcessed => {
     if (!validacion.valido) {
       equiposConError.push({
         equipo: equipo['Nombre de equipo'],
+        serie: equipo['Número de serie'],
         mac: equipo['Dirección MAC'],
         motivo: validacion.motivo
       });
@@ -374,16 +534,11 @@ export const procesarDatos = (equipos: Equipo[]): DataProcessed => {
     .map(([name, value]) => ({ name, value }))
     .sort((a, b) => b.value - a.value);
   
-  // Estado reportado (Reportados vs No Reportados)
-  const porEstadoMap = new Map<string, number>();
-  equipos.forEach((equipo) => {
-    const estadoOriginal = String(equipo['Estatus'] || 'Sin estado').trim() || 'Sin estado';
-    porEstadoMap.set(estadoOriginal, (porEstadoMap.get(estadoOriginal) || 0) + 1);
-  });
-
-  const porEstado = Array.from(porEstadoMap.entries())
-    .map(([name, value]) => ({ name, value }))
-    .sort((a, b) => b.value - a.value);
+  // Estado reportado normalizado (alineado con KPI de reportados/no reportados)
+  const porEstado = [
+    { name: 'Reportado', value: reportados },
+    { name: 'No Reportado', value: noReportados }
+  ];
   
   // Top 10 regiones
   const topRegiones = porRegion.slice(0, 10);
@@ -443,10 +598,11 @@ export const exportarAExcel = (data: DataProcessed): void => {
   if (data.equiposConError.length > 0) {
     const erroresData = data.equiposConError.map(e => [
       e.equipo,
+      e.serie,
       e.mac,
       e.motivo
     ]);
-    erroresData.unshift(['Equipo', 'MAC', 'Motivo del Error']);
+    erroresData.unshift(['Equipo', 'Serie', 'MAC', 'Motivo del Error']);
     const erroresSheet = XLSX.utils.aoa_to_sheet(erroresData);
     XLSX.utils.book_append_sheet(workbook, erroresSheet, 'Nombres Incorrectos');
   }
