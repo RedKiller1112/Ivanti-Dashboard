@@ -248,12 +248,6 @@ const isNoAtenderValue = (value: string): boolean => {
   );
 };
 
-const getRowNoAtenderFromAtencionColumn = (row: RawExcelRow, headers: string[]): boolean => {
-  const col = resolveColumn(headers, COLUMN_ALIASES.atencion || []);
-  if (!col) return false;
-  const value = String(row[col] ?? '');
-  return isNoAtenderValue(value);
-};
 
 const mapRawRowToEquipo = (
   row: RawExcelRow,
