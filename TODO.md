@@ -1,8 +1,6 @@
-# TODO - Ajustes SERVICIOMDA (ocultar resumen + mejorar iconos KPI)
+# TODO - Mejoras visuales gráficos (estilo ciberseguridad)
 
-- [ ] Agregar toggle en `App.tsx` para ocultar/mostrar KPIs+gráficos solo en SERVICIOMDA.
-- [ ] Mantener tablas siempre visibles en SERVICIOMDA.
-- [ ] Mejorar presentación de iconos KPI en `KPICards.tsx`.
-- [ ] Ajustar estilos en `App.css` para botón/tarjetas icono (desktop y móvil).
+- [ ] Actualizar `src/components/Charts.tsx` con paleta neon y elementos visuales futuristas.
+- [ ] Ajustar `src/App.css` para reforzar estilo cyber en tarjetas y títulos de gráficos.
 - [ ] Ejecutar `npm run build` para validar compilación.
-- [ ] Marcar tareas completadas.
+- [ ] Validar en UI local que el estilo se aplique correctamente.
