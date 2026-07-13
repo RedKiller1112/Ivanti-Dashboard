@@ -16,6 +16,7 @@ import type { DataProcessed } from '../types';
 interface ChartsProps {
   data: DataProcessed;
   hideRegionalSummaryCharts?: boolean;
+  onStatusSliceClick?: (name: string, source?: 'reportes' | 'sophos' | 'ivanti') => void;
 }
 
 interface PiePoint {
@@ -95,6 +96,13 @@ const normalizeStatusColor = (name: string): string => {
   return '#00F0FF';
 };
 
+const normalizeStatusLabel = (name: string): string => {
+  const n = name.toLowerCase();
+  if (n.includes('no report')) return 'No Reportado';
+  if (n.includes('report')) return 'Conectados';
+  return name;
+};
+
 const abbreviateRegion = (name: string): string => {
   const map: Record<string, string> = {
     'RM Centro Norte': 'RM CN',
@@ -122,7 +130,7 @@ const abbreviateRegion = (name: string): string => {
   return map[name] ?? (name.length > 9 ? `${name.slice(0, 9)}…` : name);
 };
 
-export const Charts = ({ data, hideRegionalSummaryCharts = false }: ChartsProps) => {
+export const Charts = ({ data, hideRegionalSummaryCharts = false, onStatusSliceClick }: ChartsProps) => {
   const allRegionsSorted = [...data.porRegion]
     .sort((a, b) => b.value - a.value)
     .map((r) => ({ ...r, shortName: abbreviateRegion(r.name) }));
@@ -158,6 +166,7 @@ export const Charts = ({ data, hideRegionalSummaryCharts = false }: ChartsProps)
       innerRadius={innerRadius}
       outerRadius={outerRadius}
       dataKey="value"
+      nameKey={enforceStatusColors ? 'normalizedName' : 'name'}
       label={false}
       labelLine={false}
       stroke="#dff8ff"
@@ -171,6 +180,14 @@ export const Charts = ({ data, hideRegionalSummaryCharts = false }: ChartsProps)
               ? normalizeStatusColor(entry.name)
               : (palette ?? COLORS)[index % (palette ?? COLORS).length]
           }
+          style={{
+            cursor: enforceStatusColors && onStatusSliceClick ? 'pointer' : 'default'
+          }}
+          onClick={() => {
+            if (enforceStatusColors && onStatusSliceClick) {
+              onStatusSliceClick(entry.name, 'reportes');
+            }
+          }}
         />
       ))}
     </Pie>
@@ -267,7 +284,13 @@ export const Charts = ({ data, hideRegionalSummaryCharts = false }: ChartsProps)
         <h3 className="chart-title">Estado de Reportes</h3>
         <ResponsiveContainer width="100%" height={300}>
           <PieChart margin={{ top: 12, right: 12, left: 12, bottom: 40 }}>
-            {renderCleanDonut(data.porEstado, undefined, 58, 92, true)}
+            {renderCleanDonut(
+              data.porEstado.map((item) => ({ ...item, normalizedName: normalizeStatusLabel(item.name) })),
+              undefined,
+              58,
+              92,
+              true
+            )}
             <Tooltip contentStyle={cyberTooltipStyle} itemStyle={{ color: '#f3fbff' }} labelStyle={{ color: '#a7ddff' }} />
             <Legend wrapperStyle={legendStyle} />
           </PieChart>
@@ -292,7 +315,27 @@ export const Charts = ({ data, hideRegionalSummaryCharts = false }: ChartsProps)
         <h3 className="chart-title">Estado del Agente Sophos</h3>
         <ResponsiveContainer width="100%" height={300}>
           <PieChart margin={{ top: 12, right: 12, left: 12, bottom: 40 }}>
-            {renderCleanDonut(data.porSophos, ['#1E1EFF', '#D7263D'], 58, 92)}
+            <Pie
+              data={data.porSophos}
+              cx="50%"
+              cy="46%"
+              innerRadius={58}
+              outerRadius={92}
+              dataKey="value"
+              label={false}
+              labelLine={false}
+              stroke="#dff8ff"
+              strokeWidth={2}
+            >
+              {data.porSophos.map((entry, index) => (
+                <Cell
+                  key={`sophos-${index}`}
+                  fill={['#1E1EFF', '#D7263D'][index % 2]}
+                  style={{ cursor: onStatusSliceClick ? 'pointer' : 'default' }}
+                  onClick={() => onStatusSliceClick?.(entry.name, 'sophos')}
+                />
+              ))}
+            </Pie>
             <Tooltip contentStyle={cyberTooltipStyle} itemStyle={{ color: '#e7f6ff' }} labelStyle={{ color: '#9fd8ff' }} />
             <Legend wrapperStyle={legendStyle} />
           </PieChart>
@@ -303,7 +346,27 @@ export const Charts = ({ data, hideRegionalSummaryCharts = false }: ChartsProps)
         <h3 className="chart-title">Estado del Agente Ivanti</h3>
         <ResponsiveContainer width="100%" height={300}>
           <PieChart margin={{ top: 12, right: 12, left: 12, bottom: 40 }}>
-            {renderCleanDonut(data.porIvanti, ['#f47b20', '#D7263D'], 58, 92)}
+            <Pie
+              data={data.porIvanti}
+              cx="50%"
+              cy="46%"
+              innerRadius={58}
+              outerRadius={92}
+              dataKey="value"
+              label={false}
+              labelLine={false}
+              stroke="#dff8ff"
+              strokeWidth={2}
+            >
+              {data.porIvanti.map((entry, index) => (
+                <Cell
+                  key={`ivanti-${index}`}
+                  fill={['#f47b20', '#D7263D'][index % 2]}
+                  style={{ cursor: onStatusSliceClick ? 'pointer' : 'default' }}
+                  onClick={() => onStatusSliceClick?.(entry.name, 'ivanti')}
+                />
+              ))}
+            </Pie>
             <Tooltip contentStyle={cyberTooltipStyle} itemStyle={{ color: '#e7f6ff' }} labelStyle={{ color: '#9fd8ff' }} />
             <Legend wrapperStyle={legendStyle} />
           </PieChart>

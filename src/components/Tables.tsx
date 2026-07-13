@@ -1,10 +1,13 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Search } from 'lucide-react';
 import type { DataProcessed } from '../types';
 
 interface TablesProps {
   data: DataProcessed;
   isServicioMda?: boolean;
+  activeTable?: TableType;
+  onActiveTableChange?: (table: TableType) => void;
+  quickFilterFromApp?: 'connected' | 'noOperativoSophos' | 'noOperativoIvanti' | null;
 }
 
 type TableType = 'noReportados' | 'incorrectos' | 'general';
@@ -20,11 +23,27 @@ const FALLBACK_NO_ATENDER_SERIES_UI = new Set([
   'mj0jmpps','mj0jlvrh','mj0jmp1g','mj0jlt81','mj0jmp1n','mj0jmqgr'
 ]);
 
-export const Tables = ({ data, isServicioMda = false }: TablesProps) => {
-  const [activeTable, setActiveTable] = useState<TableType>('noReportados');
+export const Tables = ({ data, isServicioMda = false, activeTable: externalActiveTable, onActiveTableChange, quickFilterFromApp }: TablesProps) => {
+  const [internalActiveTable, setInternalActiveTable] = useState<TableType>('noReportados');
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'nombre' | 'region' | 'usuario'>('nombre');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [quickFilter, setQuickFilter] = useState<'connected' | 'noOperativoSophos' | 'noOperativoIvanti' | null>(quickFilterFromApp ?? null);
+  const activeTable = externalActiveTable ?? internalActiveTable;
+
+  useEffect(() => {
+    if (quickFilterFromApp !== undefined) {
+      setQuickFilter(quickFilterFromApp);
+    }
+  }, [quickFilterFromApp]);
+
+  const setActiveTable = (table: TableType) => {
+    if (onActiveTableChange) {
+      onActiveTableChange(table);
+      return;
+    }
+    setInternalActiveTable(table);
+  };
 
   const toggleSort = (column: 'nombre' | 'region' | 'usuario') => {
     if (sortBy === column) {
@@ -73,13 +92,26 @@ export const Tables = ({ data, isServicioMda = false }: TablesProps) => {
         item['Dirección IP'].toLowerCase().includes(searchTerm.toLowerCase()) ||
         item['Última actualización por el servidor de inventario'].toLowerCase().includes(searchTerm.toLowerCase())
       )
+      .filter((item) => {
+        if (quickFilter === 'connected') {
+          const status = String(item['Estatus'] || '');
+          return /reportado|conectado/i.test(status) && !/no\s*reportado/i.test(status);
+        }
+        if (quickFilter === 'noOperativoSophos') {
+          return /no\s*operativo/i.test(item['Agente Sophos'] || '');
+        }
+        if (quickFilter === 'noOperativoIvanti') {
+          return /no\s*operativo/i.test(item['Agente Ivanti'] || '');
+        }
+        return true;
+      })
       .sort((a, b) => {
         const dir = sortDirection === 'asc' ? 1 : -1;
         if (sortBy === 'region') return normalize(a['Región']).localeCompare(normalize(b['Región'])) * dir;
         if (sortBy === 'usuario') return normalize(a['Cuenta NT']).localeCompare(normalize(b['Cuenta NT'])) * dir;
         return normalize(a['Nombre de equipo']).localeCompare(normalize(b['Nombre de equipo'])) * dir;
       });
-  }, [data.equipos, searchTerm, sortBy, sortDirection]);
+  }, [data.equipos, searchTerm, sortBy, sortDirection, quickFilter]);
 
   const hasNoAtenderMatch = useMemo(() => {
     if (!isServicioMda) return false;
@@ -102,6 +134,21 @@ export const Tables = ({ data, isServicioMda = false }: TablesProps) => {
       return matchSearch && (Boolean(item.noAtender) || noAtenderByUiFallback);
     });
   }, [data.equipos, isServicioMda, searchTerm]);
+
+  const connectedCount = useMemo(() => {
+    return data.equipos.filter((item) => {
+      const status = String(item['Estatus'] || '');
+      return /reportado|conectado/i.test(status) && !/no\s*reportado/i.test(status);
+    }).length;
+  }, [data.equipos]);
+
+  const noOperativoSophosCount = useMemo(() => {
+    return data.equipos.filter((item) => /no\s*operativo/i.test(item['Agente Sophos'] || '')).length;
+  }, [data.equipos]);
+
+  const noOperativoIvantiCount = useMemo(() => {
+    return data.equipos.filter((item) => /no\s*operativo/i.test(item['Agente Ivanti'] || '')).length;
+  }, [data.equipos]);
   
   const renderNoReportadosTable = () => (
     <div className="table-wrapper">
@@ -123,7 +170,7 @@ export const Tables = ({ data, isServicioMda = false }: TablesProps) => {
               <td colSpan={7} className="no-data">No hay equipos no reportados</td>
             </tr>
           ) : (
-            filteredNoReportados.slice(0, 50).map((item, index) => (
+            filteredNoReportados.map((item, index) => (
               <tr key={index}>
                 <td>{item.nombreEquipo}</td>
                 <td>{item.region}</td>
@@ -137,9 +184,9 @@ export const Tables = ({ data, isServicioMda = false }: TablesProps) => {
           )}
         </tbody>
       </table>
-      {filteredNoReportados.length > 50 && (
+      {filteredNoReportados.length > 0 && (
         <div className="table-footer">
-          Mostrando 50 de {filteredNoReportados.length} registros
+          Mostrando {filteredNoReportados.length} registros
         </div>
       )}
     </div>
@@ -162,7 +209,7 @@ export const Tables = ({ data, isServicioMda = false }: TablesProps) => {
               <td colSpan={4} className="no-data">No hay equipos con nombres incorrectos</td>
             </tr>
           ) : (
-            filteredIncorrectos.slice(0, 50).map((item, index) => (
+            filteredIncorrectos.map((item, index) => (
               <tr key={index}>
                 <td>{item.equipo}</td>
                 <td>{item.serie}</td>
@@ -173,9 +220,9 @@ export const Tables = ({ data, isServicioMda = false }: TablesProps) => {
           )}
         </tbody>
       </table>
-      {filteredIncorrectos.length > 50 && (
+      {filteredIncorrectos.length > 0 && (
         <div className="table-footer">
-          Mostrando 50 de {filteredIncorrectos.length} registros
+          Mostrando {filteredIncorrectos.length} registros
         </div>
       )}
     </div>
@@ -253,6 +300,16 @@ export const Tables = ({ data, isServicioMda = false }: TablesProps) => {
     <div className="tables-section">
       <div className="tables-header">
         <div className="tabs">
+          <button
+            type="button"
+            className={`tab ${quickFilter === 'connected' ? 'active' : ''}`}
+            onClick={() => {
+              setQuickFilter('connected');
+              setActiveTable('general');
+            }}
+          >
+            Equipos Conectados ({connectedCount.toLocaleString('es-CL')})
+          </button>
           <button 
             className={`tab ${activeTable === 'noReportados' ? 'active' : ''}`}
             onClick={() => setActiveTable('noReportados')}
@@ -265,15 +322,39 @@ export const Tables = ({ data, isServicioMda = false }: TablesProps) => {
           >
             Nombres Incorrectos ({data.equiposConError.length})
           </button>
-          <button 
-            className={`tab ${activeTable === 'general' ? 'active' : ''}`}
-            onClick={() => setActiveTable('general')}
+          <button
+            type="button"
+            className={`tab ${quickFilter === 'noOperativoSophos' ? 'active' : ''}`}
+            onClick={() => {
+              setQuickFilter('noOperativoSophos');
+              setActiveTable('general');
+            }}
           >
-            Detalle General
+            No Operativo Sophos ({noOperativoSophosCount.toLocaleString('es-CL')})
+          </button>
+          <button
+            type="button"
+            className={`tab ${quickFilter === 'noOperativoIvanti' ? 'active' : ''}`}
+            onClick={() => {
+              setQuickFilter('noOperativoIvanti');
+              setActiveTable('general');
+            }}
+          >
+            No Operativo Ivanti ({noOperativoIvantiCount.toLocaleString('es-CL')})
+          </button>
+          <button 
+            className={`tab ${activeTable === 'general' && !quickFilter ? 'active' : ''}`}
+            onClick={() => {
+              setQuickFilter(null);
+              setActiveTable('general');
+            }}
+          >
+            Total de Equipos
           </button>
         </div>
         
-        <div className="search-box">
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div className="search-box">
           <Search size={16} />
           <input
             type="text"
@@ -281,6 +362,7 @@ export const Tables = ({ data, isServicioMda = false }: TablesProps) => {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
+          </div>
         </div>
       </div>
       

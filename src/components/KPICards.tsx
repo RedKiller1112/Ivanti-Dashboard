@@ -3,9 +3,10 @@ import type { KPIs } from '../types';
 
 interface KPICardsProps {
   kpis: KPIs;
+  onCardClick?: (title: string) => void;
 }
 
-export const KPICards = ({ kpis }: KPICardsProps) => {
+export const KPICards = ({ kpis, onCardClick }: KPICardsProps) => {
   const cards = [
     {
       title: 'Total de Equipos',
@@ -68,7 +69,13 @@ export const KPICards = ({ kpis }: KPICardsProps) => {
   return (
     <div className="kpi-cards">
       {cards.map((card, index) => (
-        <div key={index} className="kpi-card">
+        <button
+          key={index}
+          type="button"
+          className="kpi-card"
+          onClick={() => onCardClick?.(card.title)}
+          style={{ textAlign: 'left', width: '100%', cursor: onCardClick ? 'pointer' : 'default' }}
+        >
           <div className="kpi-card-header">
             <span className="kpi-card-title">{card.title}</span>
             <div
@@ -85,7 +92,7 @@ export const KPICards = ({ kpis }: KPICardsProps) => {
           <div className="kpi-card-value" style={{ color: card.color }}>
             {card.value}
           </div>
-        </div>
+        </button>
       ))}
     </div>
   );
