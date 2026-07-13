@@ -38,6 +38,7 @@ function App() {
   const [accessSession, setAccessSession] = useState<AppAccessSession | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [authError, setAuthError] = useState('');
+  const [showResumenServicioMda, setShowResumenServicioMda] = useState(true);
   const dashboardRef = useRef<HTMLDivElement>(null);
   
   const buildFromEquipos = (equipos: Equipo[]): DataProcessed => {
@@ -314,9 +315,24 @@ function App() {
             </div>
             
 
-            <KPICards kpis={(filteredData || data).kpis} />
+            {isServicioMda && (
+              <div className="service-mda-controls">
+                <button
+                  type="button"
+                  className="service-mda-toggle-btn"
+                  onClick={() => setShowResumenServicioMda((prev) => !prev)}
+                >
+                  {showResumenServicioMda ? 'Ocultar gráficos y estadísticas' : 'Mostrar gráficos y estadísticas'}
+                </button>
+              </div>
+            )}
 
-            <Charts data={filteredData || data} hideRegionalSummaryCharts={isServicioMda} />
+            {(!isServicioMda || showResumenServicioMda) && (
+              <>
+                <KPICards kpis={(filteredData || data).kpis} />
+                <Charts data={filteredData || data} hideRegionalSummaryCharts={isServicioMda} />
+              </>
+            )}
 
             <Tables data={filteredData || data} isServicioMda={isServicioMda} />
           </div>

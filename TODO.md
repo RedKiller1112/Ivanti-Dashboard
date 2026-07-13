@@ -1,11 +1,8 @@
-# TODO - Nuevos accesos y vista ServicioMDA
+# TODO - Ajustes SERVICIOMDA (ocultar resumen + mejorar iconos KPI)
 
-- [ ] Agregar cuentas ServicioMDA y SuperAdmin en `src/config/accessControl.ts`.
-- [ ] Extender tipos de sesión para diferenciar ServicioMDA (general sin exportación).
-- [ ] Ajustar auth mapping en `src/services/authService.ts`.
-- [ ] Ajustar `App.tsx` para comportamiento ServicioMDA (vista general, sin exportación, sin upload).
-- [ ] Ajustar `Charts.tsx` para ocultar gráficos solicitados a ServicioMDA.
-- [ ] Extender parsing Excel para marcar equipos "no atender" por fila en rojo.
-- [ ] Extender tipos de datos para flag `noAtender`.
-- [ ] Ajustar `Tables.tsx` con búsqueda global y alerta de no atención para ServicioMDA.
-- [ ] Ejecutar build y validar.
+- [ ] Agregar toggle en `App.tsx` para ocultar/mostrar KPIs+gráficos solo en SERVICIOMDA.
+- [ ] Mantener tablas siempre visibles en SERVICIOMDA.
+- [ ] Mejorar presentación de iconos KPI en `KPICards.tsx`.
+- [ ] Ajustar estilos en `App.css` para botón/tarjetas icono (desktop y móvil).
+- [ ] Ejecutar `npm run build` para validar compilación.
+- [ ] Marcar tareas completadas.

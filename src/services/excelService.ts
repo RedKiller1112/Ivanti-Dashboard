@@ -416,6 +416,33 @@ export const procesarDatos = (equipos: Equipo[]): DataProcessed => {
   
   const normalizeEstado = (estado: string): string => normalizeText(estado);
 
+  const isAgentOperativo = (estadoAgente: string): boolean => {
+    const v = normalizeText(estadoAgente);
+    if (!v) return false;
+
+    // Regla de negocio:
+    // Cobertura = equipos con agente instalado/operativo vs total.
+    // Si existe cualquier valor no vacío distinto de estados explícitos de "no instalado/no operativo",
+    // se considera instalado para el KPI.
+    if (
+      v.includes('no operativo') ||
+      v.includes('no-operativo') ||
+      v.includes('not installed') ||
+      v.includes('sin agente') ||
+      v.includes('desinstalado') ||
+      v.includes('inactivo') ||
+      v.includes('offline') ||
+      v === 'no' ||
+      v === 'n/a' ||
+      v === 'na' ||
+      v === 'no instalado'
+    ) {
+      return false;
+    }
+
+    return true;
+  };
+
   equipos.forEach((equipo) => {
     // Validar nombre
     const validacion = validarNombreEquipo(equipo['Nombre de equipo'], equipo['Dirección MAC']);
@@ -457,15 +484,12 @@ export const procesarDatos = (equipos: Equipo[]): DataProcessed => {
       );
     }
     
-    // Verificar agente Ivanti
-    if (equipo['Agente Ivanti'] && equipo['Agente Ivanti'].toLowerCase() !== 'no' && equipo['Agente Ivanti'].toLowerCase() !== '') {
-      conIvanti++;
-    }
-    
-    // Verificar agente Sophos
-    if (equipo['Agente Sophos'] && equipo['Agente Sophos'].toLowerCase() !== 'no' && equipo['Agente Sophos'].toLowerCase() !== '') {
-      conSophos++;
-    }
+    // Verificar agente Ivanti/Sophos operativos
+    const ivantiOperativo = isAgentOperativo(equipo['Agente Ivanti']);
+    const sophosOperativo = isAgentOperativo(equipo['Agente Sophos']);
+
+    if (ivantiOperativo) conIvanti++;
+    if (sophosOperativo) conSophos++;
     
     // Agregar a región
     const region = equipo['Región'] || 'Sin Región';
@@ -475,12 +499,12 @@ export const procesarDatos = (equipos: Equipo[]): DataProcessed => {
     const anio = equipo._anioReporte || 'Sin año';
     anioMap.set(anio, (anioMap.get(anio) || 0) + 1);
     
-    // Agregar a Sophos
-    const sophos = equipo['Agente Sophos'] || 'No instalado';
+    // Agregar a Sophos (normalizado por operativo/no operativo)
+    const sophos = sophosOperativo ? 'CON AGENTE' : 'NO OPERATIVO';
     sophosMap.set(sophos, (sophosMap.get(sophos) || 0) + 1);
     
-    // Agregar a Ivanti
-    const ivanti = equipo['Agente Ivanti'] || 'No instalado';
+    // Agregar a Ivanti (normalizado por operativo/no operativo)
+    const ivanti = ivantiOperativo ? 'CON AGENTE' : 'NO OPERATIVO';
     ivantiMap.set(ivanti, (ivantiMap.get(ivanti) || 0) + 1);
     
     // Agregar a tipo
@@ -493,8 +517,8 @@ export const procesarDatos = (equipos: Equipo[]): DataProcessed => {
     totalEquipos: equipos.length,
     equiposReportados: reportados,
     equiposNoReportados: noReportados,
-    porcentajeCoberturaIvanti: equipos.length > 0 ? Math.round((conIvanti / equipos.length) * 100) : 0,
-    porcentajeCoberturaSophos: equipos.length > 0 ? Math.round((conSophos / equipos.length) * 100) : 0,
+    porcentajeCoberturaIvanti: equipos.length > 0 ? Math.floor((conIvanti / equipos.length) * 100) : 0,
+    porcentajeCoberturaSophos: equipos.length > 0 ? Math.floor((conSophos / equipos.length) * 100) : 0,
     equiposConNombreIncorrecto: equiposConError.length,
     fechaGeneracion: new Date().toLocaleDateString('es-MX', {
       year: 'numeric',
