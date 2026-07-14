@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Search } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import type { DataProcessed } from '../types';
 
 interface TablesProps {
@@ -55,16 +55,18 @@ export const Tables = ({ data, isServicioMda = false, activeTable: externalActiv
   };
 
   const normalize = (value: string) => value.toLowerCase().trim();
+  const normalizeForSearch = (value: string) => value.toLowerCase().replace(/\s+/g, '').trim();
+  const normalizedSearchTerm = normalizeForSearch(searchTerm);
 
   const filteredNoReportados = useMemo(() => {
     return data.equiposNoReportados
       .filter(item =>
-        item.nombreEquipo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.serie.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.ip.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.region.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.usuario.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.cuentaNT.toLowerCase().includes(searchTerm.toLowerCase())
+        normalizeForSearch(item.nombreEquipo).includes(normalizedSearchTerm) ||
+        normalizeForSearch(item.serie).includes(normalizedSearchTerm) ||
+        normalizeForSearch(item.ip).includes(normalizedSearchTerm) ||
+        normalizeForSearch(item.region).includes(normalizedSearchTerm) ||
+        normalizeForSearch(item.usuario).includes(normalizedSearchTerm) ||
+        normalizeForSearch(item.cuentaNT).includes(normalizedSearchTerm)
       )
       .sort((a, b) => {
         const dir = sortDirection === 'asc' ? 1 : -1;
@@ -76,21 +78,21 @@ export const Tables = ({ data, isServicioMda = false, activeTable: externalActiv
 
   const filteredIncorrectos = useMemo(() => {
     return data.equiposConError.filter(item =>
-      item.equipo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.serie.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.mac.toLowerCase().includes(searchTerm.toLowerCase())
+      normalizeForSearch(item.equipo).includes(normalizedSearchTerm) ||
+      normalizeForSearch(item.serie).includes(normalizedSearchTerm) ||
+      normalizeForSearch(item.mac).includes(normalizedSearchTerm)
     );
   }, [data.equiposConError, searchTerm]);
 
   const filteredGeneral = useMemo(() => {
     return data.equipos
       .filter(item =>
-        item['Nombre de equipo'].toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item['Número de serie'].toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item['Cuenta NT'].toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item['Usuario'].toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item['Dirección IP'].toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item['Última actualización por el servidor de inventario'].toLowerCase().includes(searchTerm.toLowerCase())
+        normalizeForSearch(item['Nombre de equipo']).includes(normalizedSearchTerm) ||
+        normalizeForSearch(item['Número de serie']).includes(normalizedSearchTerm) ||
+        normalizeForSearch(item['Cuenta NT']).includes(normalizedSearchTerm) ||
+        normalizeForSearch(item['Usuario']).includes(normalizedSearchTerm) ||
+        normalizeForSearch(item['Dirección IP']).includes(normalizedSearchTerm) ||
+        normalizeForSearch(item['Última actualización por el servidor de inventario']).includes(normalizedSearchTerm)
       )
       .filter((item) => {
         if (quickFilter === 'connected') {
@@ -117,16 +119,16 @@ export const Tables = ({ data, isServicioMda = false, activeTable: externalActiv
     if (!isServicioMda) return false;
     if (!searchTerm.trim()) return false;
 
-    const normalizedSearch = searchTerm.toLowerCase().trim();
+    const normalizedSearch = normalizeForSearch(searchTerm);
 
     return data.equipos.some((item) => {
       const matchSearch =
-        item['Nombre de equipo'].toLowerCase().includes(normalizedSearch) ||
-        item['Número de serie'].toLowerCase().includes(normalizedSearch) ||
-        item['Cuenta NT'].toLowerCase().includes(normalizedSearch) ||
-        item['Usuario'].toLowerCase().includes(normalizedSearch) ||
-        item['Dirección IP'].toLowerCase().includes(normalizedSearch) ||
-        item['Última actualización por el servidor de inventario'].toLowerCase().includes(normalizedSearch);
+        normalizeForSearch(item['Nombre de equipo']).includes(normalizedSearch) ||
+        normalizeForSearch(item['Número de serie']).includes(normalizedSearch) ||
+        normalizeForSearch(item['Cuenta NT']).includes(normalizedSearch) ||
+        normalizeForSearch(item['Usuario']).includes(normalizedSearch) ||
+        normalizeForSearch(item['Dirección IP']).includes(normalizedSearch) ||
+        normalizeForSearch(item['Última actualización por el servidor de inventario']).includes(normalizedSearch);
 
       const serieNorm = item['Número de serie'].toLowerCase().replace(/\s+/g, '');
       const noAtenderByUiFallback = FALLBACK_NO_ATENDER_SERIES_UI.has(serieNorm);
@@ -247,14 +249,14 @@ export const Tables = ({ data, isServicioMda = false, activeTable: externalActiv
           <tr>
             <th onClick={() => toggleSort('nombre')} style={{ cursor: 'pointer' }}>Nombre</th>
             <th>Serie</th>
-            <th>Tipo</th>
+            <th>IP</th>
             <th onClick={() => toggleSort('region')} style={{ cursor: 'pointer' }}>Región</th>
+            <th>Fiscalía</th>
             <th onClick={() => toggleSort('usuario')} style={{ cursor: 'pointer' }}>Cuenta NT</th>
             <th>Usuario</th>
             <th>Estado</th>
             <th>Agente Ivanti</th>
             <th>Agente Sophos</th>
-            <th>IP</th>
             <th>Último Reporte</th>
           </tr>
         </thead>
@@ -263,8 +265,9 @@ export const Tables = ({ data, isServicioMda = false, activeTable: externalActiv
             <tr key={index}>
               <td>{item['Nombre de equipo']}</td>
               <td>{item['Número de serie']}</td>
-              <td>{item['Tipo']}</td>
+              <td>{item['Dirección IP']}</td>
               <td>{item['Región']}</td>
+              <td>{item['Fiscalía']}</td>
               <td>{item['Cuenta NT']}</td>
               <td>{item['Usuario']}</td>
               <td>
@@ -282,7 +285,6 @@ export const Tables = ({ data, isServicioMda = false, activeTable: externalActiv
               </td>
               <td>{item['Agente Ivanti']}</td>
               <td>{item['Agente Sophos']}</td>
-              <td>{item['Dirección IP']}</td>
               <td>{item['Última actualización por el servidor de inventario']}</td>
             </tr>
           ))}
@@ -362,6 +364,16 @@ export const Tables = ({ data, isServicioMda = false, activeTable: externalActiv
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
+          {searchTerm && (
+            <button
+              type="button"
+              className="clear-search-btn"
+              aria-label="Limpiar búsqueda"
+              onClick={() => setSearchTerm('')}
+            >
+              <X size={14} />
+            </button>
+          )}
           </div>
         </div>
       </div>
