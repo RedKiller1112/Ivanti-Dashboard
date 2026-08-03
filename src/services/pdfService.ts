@@ -66,8 +66,6 @@ export const exportarAPDF = async (elementId: string): Promise<void> => {
   const printableWidth = pageWidth - margin * 2;
   const printableHeight = pageHeight - margin * 2;
 
-  const imgData = canvas.toDataURL('image/png', 1.0);
-
   const ratio = printableWidth / canvas.width;
   const totalScaledHeight = canvas.height * ratio;
   let remainingHeight = totalScaledHeight;

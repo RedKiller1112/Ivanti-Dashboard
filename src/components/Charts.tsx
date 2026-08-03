@@ -300,7 +300,7 @@ export const Charts = ({ data, hideRegionalSummaryCharts = false, onStatusSliceC
       <div className="chart-card">
         <h3 className="chart-title">Equipos No Reportados por Año</h3>
         <ResponsiveContainer width="100%" height={250}>
-          <BarChart data={data.noReportadosPorAnio}>
+          <BarChart data={data.noReportadosPorAnio} margin={{ top: 28, right: 26, left: 10, bottom: 28 }}>
             <CartesianGrid stroke={GRID_COLOR} strokeDasharray="4 6" />
             <XAxis dataKey="name" tick={{ fill: AXIS_COLOR, fontSize: 12 }} axisLine={{ stroke: GRID_COLOR }} tickLine={{ stroke: GRID_COLOR }} />
             <YAxis tick={{ fill: AXIS_COLOR, fontSize: 12 }} axisLine={{ stroke: GRID_COLOR }} tickLine={{ stroke: GRID_COLOR }} />
