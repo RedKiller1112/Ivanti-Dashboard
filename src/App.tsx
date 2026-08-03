@@ -39,7 +39,10 @@ function App() {
   const [authLoading, setAuthLoading] = useState(true);
   const [authError, setAuthError] = useState('');
   const [showResumenServicioMda, setShowResumenServicioMda] = useState(true);
+  const [activeTable, setActiveTable] = useState<'noReportados' | 'incorrectos' | 'general'>('noReportados');
+  const [tablesQuickFilter, setTablesQuickFilter] = useState<'connected' | 'noOperativoSophos' | 'noOperativoIvanti' | null>(null);
   const dashboardRef = useRef<HTMLDivElement>(null);
+  const tablesSectionRef = useRef<HTMLDivElement>(null);
   
   const buildFromEquipos = (equipos: Equipo[]): DataProcessed => {
     return procesarDatos(equipos);
@@ -71,6 +74,78 @@ function App() {
     } catch (error) {
       console.error('Error al exportar Excel:', error);
       alert('Error al exportar Excel');
+    }
+  };
+
+  const scrollToTables = () => {
+    requestAnimationFrame(() => {
+      tablesSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  };
+
+  const handleKpiCardClick = (title: string) => {
+    if (title === 'Nombres Incorrectos') {
+      setActiveTable('incorrectos');
+    } else if (title === 'Equipos No Reportados') {
+      setActiveTable('noReportados');
+    } else if (title === 'Equipos Conectados') {
+      setActiveTable('general');
+      setTablesQuickFilter('connected');
+    } else if (
+      title === 'Total de Equipos' ||
+      title === '% Cobertura Ivanti' ||
+      title === '% Cobertura Sophos'
+    ) {
+      setActiveTable('general');
+      setTablesQuickFilter(null);
+    } else {
+      return;
+    }
+
+    scrollToTables();
+  };
+
+  const handleStatusSliceClick = (name: string, source?: 'reportes' | 'sophos' | 'ivanti') => {
+    const normalized = name.toLowerCase();
+
+    if (source === 'sophos') {
+      setActiveTable('general');
+
+      if (normalized.includes('no oper')) {
+        setTablesQuickFilter('noOperativoSophos');
+      } else {
+        setTablesQuickFilter(null);
+      }
+
+      scrollToTables();
+      return;
+    }
+
+    if (source === 'ivanti') {
+      setActiveTable('general');
+
+      if (normalized.includes('no oper')) {
+        setTablesQuickFilter('noOperativoIvanti');
+      } else {
+        setTablesQuickFilter(null);
+      }
+
+      scrollToTables();
+      return;
+    }
+
+    if (source === 'reportes') {
+      setActiveTable('general');
+
+      if (normalized.includes('no report')) {
+        setActiveTable('noReportados');
+        setTablesQuickFilter(null);
+      } else if (normalized.includes('report')) {
+        setTablesQuickFilter('connected');
+      }
+
+      scrollToTables();
+      return;
     }
   };
   
@@ -329,12 +404,24 @@ function App() {
 
             {(!isServicioMda || showResumenServicioMda) && (
               <>
-                <KPICards kpis={(filteredData || data).kpis} />
-                <Charts data={filteredData || data} hideRegionalSummaryCharts={isServicioMda} />
+                <KPICards kpis={(filteredData || data).kpis} onCardClick={handleKpiCardClick} />
+                <Charts
+                  data={filteredData || data}
+                  hideRegionalSummaryCharts={isServicioMda}
+                  onStatusSliceClick={handleStatusSliceClick}
+                />
               </>
             )}
 
-            <Tables data={filteredData || data} isServicioMda={isServicioMda} />
+            <div ref={tablesSectionRef}>
+              <Tables
+                data={filteredData || data}
+                isServicioMda={isServicioMda}
+                activeTable={activeTable}
+                onActiveTableChange={setActiveTable}
+                quickFilterFromApp={tablesQuickFilter}
+              />
+            </div>
           </div>
         )}
       </main>

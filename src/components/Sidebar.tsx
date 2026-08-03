@@ -91,12 +91,6 @@ export const Sidebar = ({
             <LayoutDashboard size={28} />
             <span>Dashboard Ivanti</span>
           </div>
-          <button 
-            className="sidebar-close desktop-only"
-            onClick={() => onSidebarOpenChange(false)}
-          >
-            <X size={20} />
-          </button>
         </div>
         
         <nav className="sidebar-nav">
