@@ -7,7 +7,8 @@ import {
   getCurrentSession,
   onAuthStateChange,
   getMyProfile,
-  signInWithRegionPassword,
+  beginSignInWithRegionPassword,
+  completeTotpSignIn,
   getAccessSession
 } from './services/authService';
 import type { DataProcessed, Filtros, Equipo } from './types';
@@ -32,7 +33,7 @@ function App() {
   }, []);
 
   const isRegionalReadOnly = regionFromUrl.length > 0;
-  
+
   const [loadingPublishedData, setLoadingPublishedData] = useState(true);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [accessSession, setAccessSession] = useState<AppAccessSession | null>(null);
@@ -41,9 +42,11 @@ function App() {
   const [showResumenServicioMda, setShowResumenServicioMda] = useState(true);
   const [activeTable, setActiveTable] = useState<'noReportados' | 'incorrectos' | 'general'>('noReportados');
   const [tablesQuickFilter, setTablesQuickFilter] = useState<'connected' | 'noOperativoSophos' | 'noOperativoIvanti' | null>(null);
+  const [requiresOtp, setRequiresOtp] = useState(false);
+  const [otpAccessKey, setOtpAccessKey] = useState('');
   const dashboardRef = useRef<HTMLDivElement>(null);
   const tablesSectionRef = useRef<HTMLDivElement>(null);
-  
+
   const buildFromEquipos = (equipos: Equipo[]): DataProcessed => {
     return procesarDatos(equipos);
   };
@@ -54,10 +57,10 @@ function App() {
       setFiltros((prev) => ({ ...prev, region: regionFromUrl }));
     }
   };
-  
+
   const handleExportPDF = async () => {
     if (!dashboardRef.current) return;
-    
+
     try {
       await exportarAPDF('dashboard-content');
     } catch (error) {
@@ -65,10 +68,10 @@ function App() {
       alert('Error al exportar PDF');
     }
   };
-  
+
   const handleExportExcel = () => {
     if (!data) return;
-    
+
     try {
       exportarAExcel(data);
     } catch (error) {
@@ -148,7 +151,7 @@ function App() {
       return;
     }
   };
-  
+
   useEffect(() => {
     if (!regionFromUrl) return;
     setFiltros((prev) => ({
@@ -269,12 +272,38 @@ function App() {
     try {
       setAuthLoading(true);
       setAuthError('');
-      const nextAccess = await signInWithRegionPassword(accessKey, password);
-      setAccessSession(nextAccess);
+      const result = await beginSignInWithRegionPassword(accessKey, password);
 
+      if (result.status === 'requires_totp') {
+        setRequiresOtp(true);
+        setOtpAccessKey(result.accessKey);
+        return;
+      }
+
+      setAccessSession(result.session);
       setProfile(null);
+      setRequiresOtp(false);
+      setOtpAccessKey('');
     } catch (err) {
       setAuthError(err instanceof Error ? err.message : 'Credenciales inválidas.');
+      setRequiresOtp(false);
+      setOtpAccessKey('');
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async (otp: string) => {
+    try {
+      setAuthLoading(true);
+      setAuthError('');
+      const nextAccess = await completeTotpSignIn(otp);
+      setAccessSession(nextAccess);
+      setProfile(null);
+      setRequiresOtp(false);
+      setOtpAccessKey('');
+    } catch (err) {
+      setAuthError(err instanceof Error ? err.message : 'Código OTP inválido.');
     } finally {
       setAuthLoading(false);
     }
@@ -300,6 +329,8 @@ function App() {
     });
     setAccessSession(null);
     setProfile(null);
+    setRequiresOtp(false);
+    setOtpAccessKey('');
   };
 
   const filteredData = useMemo(() => {
@@ -324,7 +355,7 @@ function App() {
         <main className="main-content">
           <div className="welcome-screen">
             <div className="welcome-content">
-              <h1>Dashboard Ivanti</h1>
+              <h1>Dashboard Ivanti - Sophos</h1>
               <p>Validando sesión...</p>
             </div>
           </div>
@@ -334,13 +365,22 @@ function App() {
   }
 
   if (!accessSession) {
-    return <Login onLogin={handleLogin} loading={authLoading} error={authError} />;
+    return (
+      <Login
+        onLogin={handleLogin}
+        onVerifyOtp={handleVerifyOtp}
+        loading={authLoading}
+        error={authError}
+        requiresOtp={requiresOtp}
+        otpAccessKey={otpAccessKey}
+      />
+    );
   }
 
-  
+
   return (
     <div className={`app ${darkMode ? 'dark-mode' : ''}`}>
-      <Sidebar 
+      <Sidebar
         darkMode={darkMode}
         onDarkModeChange={setDarkMode}
         sidebarOpen={sidebarOpen}
@@ -356,19 +396,19 @@ function App() {
         onLogout={handleLogout}
         canExport={accessSession.scope === 'general_admin' || accessSession.scope === 'super_admin'}
       />
-      
+
       <main className="main-content">
         {loadingPublishedData ? (
           <div className="welcome-screen">
             <div className="welcome-content">
-              <h1>Dashboard Ivanti</h1>
+              <h1>Dashboard Ivanti - Sophos</h1>
               <p>Cargando información publicada...</p>
             </div>
           </div>
         ) : !data ? (
           <div className="welcome-screen">
             <div className="welcome-content">
-              <h1>Dashboard Ivanti</h1>
+              <h1>Dashboard Ivanti - Sophos</h1>
               <p>Sube un archivo Excel para generar tu dashboard ejecutivo</p>
               <Upload
                 onDataLoaded={handleDataLoaded}
@@ -378,17 +418,27 @@ function App() {
           </div>
         ) : (
           <div className="dashboard" id="dashboard-content" ref={dashboardRef}>
-            <div className="dashboard-header">
-              <div className="dashboard-title-block">
-                <h1>Dashboard Ejecutivo - Inventario Ivanti</h1>
+            <div className="dashboard-top-bar">
+              <div className="dashboard-header">
+                <h1>Dashboard Ejecutivo - Inventario Ivanti - Sophos</h1>
                 <p>Fecha de generación: {data.kpis.fechaGeneracion}</p>
               </div>
-              <div className="dashboard-branding">
-                <img src="/ministerio.svg" alt="Ministerio Público" className="brand-logo ministerio-logo" />
-                <img src="/fcom.png" alt="FCOM" className="brand-logo fcom-logo" />
+              <div className="dashboard-branding-line">
+                <div className="logo-card logo-card-ivanti">
+                  <img src="/ivanti.png" alt="Ivanti" className="partner-logo" />
+                </div>
+                <div className="logo-card logo-card-sophos">
+                  <img src="/sophos.png" alt="Sophos" className="partner-logo" />
+                </div>
+                <div className="logo-card logo-card-white logo-card-ministerio">
+                  <img src="/ministerio.svg" alt="Ministerio Público" className="brand-logo" />
+                </div>
+                <div className="logo-card logo-card-white">
+                  <img src="/fcom.png" alt="FCOM" className="brand-logo" />
+                </div>
               </div>
             </div>
-            
+
 
             {isServicioMda && (
               <div className="service-mda-controls">

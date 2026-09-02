@@ -86,10 +86,10 @@ export const Sidebar = ({
       
       {/* Sidebar */}
       <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
-        <div className="sidebar-header">
+          <div className="sidebar-header">
           <div className="logo">
             <LayoutDashboard size={28} />
-            <span>Dashboard Ivanti</span>
+            <span>Dashboard Ivanti - Sophos</span>
           </div>
         </div>
         
@@ -208,7 +208,7 @@ export const Sidebar = ({
         </nav>
         
         <div className="sidebar-footer">
-          <p>© 2024 Dashboard Ivanti · By Jordán Farías</p>
+          <p>© 2024 Dashboard Ivanti - Sophos · By Jordán Farías</p>
           <p>Versión 1.0.0</p>
         </div>
       </aside>
